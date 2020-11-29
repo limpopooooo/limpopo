@@ -1,0 +1,35 @@
+[tool.poetry]
+name = "limpopo"
+version = "0.1.1"
+description = "limpopo is a framework that allows you to create an application for conducting surveys via messengers"
+readme = "README.rst"
+authors = ["limpopooooo"]
+license = "MIT"
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+]
+
+
+[tool.poetry.dependencies]
+python = ">=3.6.1,<4.0"
+Telethon = { version = "^1.18.2", extras = ["pillow", "cryptg"] }
+
+[tool.poetry.dev-dependencies]
+Pygments = "^2.7.2"
+black = "^20.8b1"
+isort = "^5.6.4"
+flake8 = { version = "^3.8.4", extras = ["flake8-isort", "flake8-bugbear"] }
+pre-commit = "^2.9.2"
+pre-commit-hooks = "^3.3.0"
+
+[tool.poetry.extras]
+postgres-migrations = ["psycopg2-binary", "alembic"]
+postgres-storage = ["sqlalchemy", "asyncpg"]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

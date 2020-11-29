@@ -1,5 +1,4 @@
 import enum
-
 from asyncio import Event
 from dataclasses import dataclass
 
