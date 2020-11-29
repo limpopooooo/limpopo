@@ -1,5 +1,4 @@
 from abc import ABCMeta, abstractmethod
-
 from asyncio import Event, wait_for
 from copy import copy
 
@@ -40,7 +39,7 @@ class ArchetypeDialog(metaclass=ABCMeta):
         service: ArchetypeService,
         identifier: int,
         username: str,
-        answer_timeout: int = const.ANSWER_TIMEOUT
+        answer_timeout: int = const.ANSWER_TIMEOUT,
     ):
         self.service = service
         self.identifier = identifier

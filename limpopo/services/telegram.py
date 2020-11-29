@@ -1,9 +1,6 @@
 import logging
-import asyncio
 
-from telethon import TelegramClient, events
-from telethon import Button
-from telethon.tl.types import InputMediaPoll, Poll, PollAnswer
+from telethon import Button, TelegramClient, events
 
 from .. import const
 from ..dto import Message, Messengers
@@ -26,17 +23,14 @@ class TelegramDialog(ArchetypeDialog):
             if len(buttons) > question.column_count:
                 rows_buttons = list(zip(*(question.column_count * [iter(buttons)])))
                 if len(buttons) % question.column_count:
-                    rows_buttons.append(buttons[-(len(buttons) % question.column_count):])
+                    rows_buttons.append(
+                        buttons[-(len(buttons) % question.column_count) :]
+                    )
                 buttons = rows_buttons
 
-            return {
-                'message': message,
-                'buttons': buttons
-            }
+            return {"message": message, "buttons": buttons}
 
-        return {
-            'message': message
-        }
+        return {"message": message}
 
     def prepare_answer(self, question, answer):
         if question.options and question.inline:
@@ -55,11 +49,8 @@ class TelegramService(ArchetypeService):
     def __init__(self, quiz, storage, settings, *args, **kwargs):
         super().__init__(quiz, storage, settings)
         self._bot = TelegramClient(
-            "testbot",
-            settings['api_id'],
-            settings['api_hash'],
-            proxy=None
-        ).start(bot_token=settings['token'])
+            "testbot", settings["api_id"], settings["api_hash"], proxy=None
+        ).start(bot_token=settings["token"])
 
     async def handle_click_button(self, event):
         if event.chat_id not in self.dialogs:
@@ -78,7 +69,7 @@ class TelegramService(ArchetypeService):
 
         dialog = self.dialogs[event.chat_id]
 
-        message = Message(event.message.id, event.message.text)
+        Message(event.message.id, event.message.text)
         await dialog.handle_message(event.message)
 
     async def handle_start(self, event):
@@ -99,7 +90,7 @@ class TelegramService(ArchetypeService):
             if event.chat_id not in self.dialogs:
                 await self._bot.send_message(event.chat, const.SESSION_DOESNT_EXIST)
                 return
-                
+
             await self.close_dialog(event.chat)
             await self._bot.send_message(event.chat, const.CANCEL)
         finally:
@@ -109,23 +100,20 @@ class TelegramService(ArchetypeService):
         dialog = self.dialogs.pop(user.id, None)
         if dialog:
             await dialog.close()
-            logging.info('Dialog {} was closed'.format(user.id))
+            logging.info("Dialog {} was closed".format(user.id))
         else:
-            logging.info('Dialog {} doesn\'t found'.format(user.id))
+            logging.info("Dialog {} doesn't found".format(user.id))
 
     async def create_dialog(self, user):
         dialog = TelegramDialog(
-            self,
-            user.id,
-            user.username,
-            **self.settings.get('dialog', {})
+            self, user.id, user.username, **self.settings.get("dialog", {})
         )
 
         await dialog.start()
 
         self.dialogs[user.id] = dialog
 
-        logging.info('New dialog was created with id: {}'.format(user.id))
+        logging.info("New dialog was created with id: {}".format(user.id))
 
         return dialog
 
@@ -134,8 +122,12 @@ class TelegramService(ArchetypeService):
         return message.id
 
     def run_forever(self):
-        self._bot.add_event_handler(self.handle_start, events.NewMessage(pattern="/start"))
-        self._bot.add_event_handler(self.handle_cancel, events.NewMessage(pattern="/cancel"))
+        self._bot.add_event_handler(
+            self.handle_start, events.NewMessage(pattern="/start")
+        )
+        self._bot.add_event_handler(
+            self.handle_cancel, events.NewMessage(pattern="/cancel")
+        )
         self._bot.add_event_handler(self.handle_new_message, events.NewMessage)
         self._bot.add_event_handler(self.handle_click_button, events.CallbackQuery)
         self._bot.run_until_disconnected()

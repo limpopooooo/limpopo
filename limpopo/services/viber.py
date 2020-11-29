@@ -1,8 +1,3 @@
-import logging
-import asyncio
-
-from .. import const
-from ..dto import Message
 from .archetype import ArchetypeDialog, ArchetypeService
 
 
@@ -15,10 +10,7 @@ class ViberDialog(ArchetypeDialog):
             for option in question.options:
                 buttons.append(option)
 
-        return {
-            'message': message,
-            'buttons': buttons
-        }
+        return {"message": message, "buttons": buttons}
 
 
 class ViberService(ArchetypeService):
@@ -30,4 +22,3 @@ class ViberService(ArchetypeService):
 
     async def send_message(self, user_id, *args, **kwargs):
         pass
-
