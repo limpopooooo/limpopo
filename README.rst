@@ -23,9 +23,7 @@ A Simple Example
 
 .. code-block:: python
 
-    import env
-    import envparse  # External dependencies
-    import import
+    from envparse import env # External dependencies
     from limpopo.question import Question
     from limpopo.services import TelegramService
     from limpopo.storages import FakeStorage
