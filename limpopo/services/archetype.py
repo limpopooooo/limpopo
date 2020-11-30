@@ -1,20 +1,72 @@
+import logging
+
 from abc import ABCMeta, abstractmethod
-from asyncio import Event, wait_for
+from asyncio import Event, wait_for, Queue, TimeoutError
 from copy import copy
+import typing
 
 from .. import const
-from ..dto import Answer, Message
+from ..dto import Answer, Message, Respondent
 from ..exceptions import QuestionWrongAnswer
 from ..question import Question
 
 
 class ArchetypeService(metaclass=ABCMeta):
-    def __init__(self, quiz, storage, settings, *args, **kwargs):
+    def __init__(self, quiz, storage, settings, cls_dialog, *args, **kwargs):
         self.stop_event = Event()
         self.dialogs = {}
         self.quiz = quiz
         self.storage = storage
         self.settings = settings
+        self.cls_dialog = cls_dialog
+
+    async def run_quiz(self, dialog):
+        try:
+            await self.quiz(dialog)
+            await self.close_dialog(dialog.respondent.id, is_complete=True)
+        except TimeoutError:
+            logging.info("Dialog #{} removed due to timeout")
+            await self.close_dialog(dialog.respondent.id, is_complete=None)
+
+    async def close_dialog(
+        self, respondent_id: str, is_complete: typing.Optional[bool]
+    ):
+        dialog = self.dialogs.pop(respondent_id, None)
+        if dialog:
+            if is_complete is not None:
+                await dialog.on_close(is_complete)
+            logging.info("Dialog {} was closed".format(dialog.id))
+        else:
+            logging.info(
+                "Dialog with respondent: {} doesn't found".format(respondent_id)
+            )
+
+    async def create_dialog(
+        self, respondent: Respondent, identifier=None, prepared_questions=None
+    ):
+        dialog = self.cls_dialog(
+            self,
+            respondent,
+            prepared_questions=prepared_questions,
+            **self.settings.get("dialog", {}),
+        )
+
+        if identifier:
+            dialog.set_restore_mode()
+        else:
+            identifier = await dialog.on_start()
+
+        dialog.set_identifier(identifier)
+
+        self.dialogs[respondent.id] = dialog
+
+        logging.info(
+            "New dialog #{} was created for respondent: {}".format(
+                identifier, respondent.id
+            )
+        )
+
+        return dialog
 
     @property
     @abstractmethod
@@ -37,16 +89,30 @@ class ArchetypeDialog(metaclass=ABCMeta):
     def __init__(
         self,
         service: ArchetypeService,
-        identifier: int,
-        username: str,
+        respondent: Respondent,
         answer_timeout: int = const.ANSWER_TIMEOUT,
+        prepared_questions=None,
+        *args,
+        **kwargs,
     ):
+        self.id = None
+
         self.service = service
-        self.identifier = identifier
-        self.username = username
+        self.respondent = respondent
+
         self.last_question_id = 0
         self.answer = Answer()
+        self.prepared_questions = prepared_questions or {}
         self.answer_timeout = answer_timeout
+
+        self._queue_answers = Queue(10)
+        self._restore_mode = False
+
+    def set_restore_mode(self):
+        self._restore_mode = True
+
+    def set_identifier(self, identifier: str):
+        self.id = identifier
 
     @abstractmethod
     def prepare_question(self, question: Question) -> dict:
@@ -59,14 +125,25 @@ class ArchetypeDialog(metaclass=ABCMeta):
     async def ask(self, question: Question) -> Answer:
         self.answer.clear()
 
-        message_data = self.prepare_question(question)
+        if question.topic in self.prepared_questions:
+            answer_text = self.prepared_questions[question.topic]
+            self.answer.set(answer_text)
+            return copy(self.answer)
 
-        self.last_question_id = await self.tell(**message_data)
+        if not self._restore_mode:
+            message_data = self.prepare_question(question)
+            self.last_question_id = await self.tell(**message_data)
+
+        self._restore_mode = False
 
         while 1:
             try:
-                await wait_for(self.answer.wait(), self.answer_timeout)
+                message = await wait_for(self._queue_answers.get(), self.answer_timeout)
 
+                if message.id < self.last_question_id:
+                    continue
+
+                self.answer.set(message.text)
                 self.answer = self.prepare_answer(question, self.answer)
 
                 question.validate_answer(self.answer)
@@ -79,16 +156,13 @@ class ArchetypeDialog(metaclass=ABCMeta):
                 self.answer.clear()
 
     async def tell(self, *args, **kwargs) -> int:
-        return await self.service.send_message(self.identifier, *args, **kwargs)
+        return await self.service.send_message(self.respondent.id, *args, **kwargs)
 
     async def handle_message(self, message: Message):
-        if message.id < self.last_question_id:
-            return
+        await self._queue_answers.put(message)
 
-        self.answer.set(message.text)
+    async def on_start(self):
+        return await self.service.storage.create_dialog(self)
 
-    async def start(self):
-        await self.service.storage.save_dialog(self)
-
-    async def close(self):
-        pass
+    async def on_close(self, is_complete):
+        await self.service.storage.close_dialog(self, is_complete)

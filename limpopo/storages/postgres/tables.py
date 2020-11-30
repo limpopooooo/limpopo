@@ -1,36 +1,66 @@
 from sqlalchemy import (
+    Boolean,
     Column,
     Enum,
+    ForeignKey,
     ForeignKeyConstraint,
     Integer,
     MetaData,
     String,
+    DateTime,
     Table,
+    Index,
 )
+from sqlalchemy.sql import expression, func
+from sqlalchemy.dialects.postgresql import JSONB
 
-from ...dto import Messengers
+from limpopo.dto import Messengers
+
 
 metadata = MetaData()
+
+
+respondents = Table(
+    "respondents",
+    metadata,
+    Column("created_at", DateTime(timezone=True), server_default=func.now()),
+    Column("id", String, primary_key=True),
+    Column("messenger", Enum(Messengers), primary_key=True),
+    Column("username", String, nullable=True),
+    Column("first_name", String, nullable=True),
+    Column("last_name", String, nullable=True),
+    Column("extra_data", JSONB, nullable=True),
+)
 
 
 dialogs = Table(
     "dialogs",
     metadata,
     Column("id", Integer, primary_key=True),
-    Column("messenger", Enum(Messengers), primary_key=True),
-    Column("username", String),
-)
-
-
-dialog_steps = Table(
-    "dialog_steps",
-    metadata,
-    Column("id", Integer, primary_key=True),
-    Column("dialog_id", Integer),
-    Column("messenger", Enum(Messengers)),
-    Column("question", String),
-    Column("answer", String),
+    Column("created_at", DateTime(timezone=True), server_default=func.now()),
+    Column("finished_at", DateTime(timezone=True), nullable=True),
+    Column("cancelled", Boolean, server_default=expression.false()),
+    Column("completed", Boolean, server_default=expression.false()),
+    Column("respondent_id", String, nullable=False),
+    Column("respondent_messenger", Enum(Messengers), nullable=False),
     ForeignKeyConstraint(
-        ["dialog_id", "messenger"], ["dialogs.id", "dialogs.messenger"]
+        ["respondent_id", "respondent_messenger"],
+        ["respondents.id", "respondents.messenger"],
     ),
 )
+
+
+dialogue_steps = Table(
+    "dialogue_steps",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("created_at", DateTime(timezone=True), server_default=func.now()),
+    Column("dialog_id", Integer, ForeignKey(dialogs.c.id), nullable=False),
+    Column("question", String, nullable=False),
+    Column("answer", String, nullable=False),
+)
+
+Index(
+    "idx_dialog_fk_respondent", dialogs.c.respondent_id, dialogs.c.respondent_messenger
+)
+Index("idx_dialogue_steps_fk_dialog", dialogue_steps.c.dialog_id)
