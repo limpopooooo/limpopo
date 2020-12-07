@@ -17,6 +17,7 @@ classifiers = [
 [tool.poetry.dependencies]
 python = ">=3.6.1,<4.0"
 Telethon = { version = "^1.18.2", extras = ["pillow", "cryptg"] }
+starlette = "^0.14.1"
 
 [tool.poetry.dev-dependencies]
 Pygments = "^2.7.2"

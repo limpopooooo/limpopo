@@ -54,8 +54,7 @@ class TelegramService(ArchetypeService):
         super().__init__(quiz, storage, settings, cls_dialog)
         self._bot = TelegramClient(
             "testbot", settings["api_id"], settings["api_hash"], proxy=None
-        ).start(bot_token=settings["token"])
-
+        )
     async def restore_dialog(
         self, respondent_id, event
     ) -> typing.Optional[TelegramDialog]:
@@ -178,8 +177,10 @@ class TelegramService(ArchetypeService):
 
     def run_forever(self):
         self.set_handlers()
+        self._bot.start(bot_token=self.settings["token"])
         self._bot.run_until_disconnected()
 
     async def async_run_forever(self):
         self.set_handlers()
+        await self._bot.start(bot_token=self.settings["token"])
         await self._bot.run_until_disconnected()
