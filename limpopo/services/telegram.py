@@ -52,9 +52,10 @@ class TelegramService(ArchetypeService):
         self, quiz, storage, settings, cls_dialog=TelegramDialog, *args, **kwargs
     ):
         super().__init__(quiz, storage, settings, cls_dialog)
-        self._bot = TelegramClient(
-            "testbot", settings["api_id"], settings["api_hash"], proxy=None
+        self._client = TelegramClient(
+            settings['session'], settings["api_id"], settings["api_hash"], proxy=None
         )
+
     async def restore_dialog(
         self, respondent_id, event
     ) -> typing.Optional[TelegramDialog]:
@@ -96,7 +97,7 @@ class TelegramService(ArchetypeService):
         dialog = await self.restore_dialog(respondent_id, event)
 
         if dialog is None:
-            await self._bot.send_message(event.chat_id, const.FOREWORD)
+            await self._client.send_message(event.chat_id, const.FOREWORD)
         else:
             return dialog
 
@@ -151,36 +152,34 @@ class TelegramService(ArchetypeService):
             respondent_id = str(event.chat_id)
 
             if respondent_id not in self.dialogs:
-                await self._bot.send_message(event.chat, const.SESSION_DOESNT_EXIST)
+                await self._client.send_message(event.chat, const.SESSION_DOESNT_EXIST)
                 return
 
             await self.close_dialog(respondent_id, is_complete=False)
-            await self._bot.send_message(event.chat, const.CANCEL)
+            await self._client.send_message(event.chat, const.CANCEL)
         except Exception:
             logging.exception("Catch exception in handle_cancel:")
         finally:
             raise events.StopPropagation
 
     async def send_message(self, user_id, *args, **kwargs):
-        message = await self._bot.send_message(int(user_id), *args, **kwargs)
+        message = await self._client.send_message(int(user_id), *args, **kwargs)
         return message.id
 
     def set_handlers(self):
-        self._bot.add_event_handler(
+        self._client.add_event_handler(
             self.handle_start, events.NewMessage(pattern="/start")
         )
-        self._bot.add_event_handler(
+        self._client.add_event_handler(
             self.handle_cancel, events.NewMessage(pattern="/cancel")
         )
-        self._bot.add_event_handler(self.handle_new_message, events.NewMessage)
-        self._bot.add_event_handler(self.handle_click_button, events.CallbackQuery)
+        self._client.add_event_handler(self.handle_new_message, events.NewMessage)
+        self._client.add_event_handler(self.handle_click_button, events.CallbackQuery)
 
-    def run_forever(self):
-        self.set_handlers()
-        self._bot.start(bot_token=self.settings["token"])
-        self._bot.run_until_disconnected()
+    async def stop(self):
+        await self._client.disconnect()
 
-    async def async_run_forever(self):
+    async def run_forever(self):
         self.set_handlers()
-        await self._bot.start(bot_token=self.settings["token"])
-        await self._bot.run_until_disconnected()
+        await self._client.start(bot_token=self.settings["token"])
+        await self._client.run_until_disconnected()

@@ -1,7 +1,7 @@
 import logging
 
 from abc import ABCMeta, abstractmethod
-from asyncio import Event, wait_for, Queue, TimeoutError
+from asyncio import wait_for, Queue, TimeoutError
 from copy import copy
 import typing
 
@@ -13,7 +13,6 @@ from ..question import Question
 
 class ArchetypeService(metaclass=ABCMeta):
     def __init__(self, quiz, storage, settings, cls_dialog, *args, **kwargs):
-        self.stop_event = Event()
         self.dialogs = {}
         self.quiz = quiz
         self.storage = storage
@@ -73,11 +72,12 @@ class ArchetypeService(metaclass=ABCMeta):
     def type(self):
         pass
 
-    def stop(self):
-        self.stop_event.set()
+    @abstractmethod
+    async def stop(self):
+        pass
 
     @abstractmethod
-    def run_forever(self):
+    async def run_forever(self):
         pass
 
     @abstractmethod
