@@ -1,9 +1,8 @@
 import logging
-
-from abc import ABCMeta, abstractmethod
-from asyncio import wait_for, Queue, TimeoutError
-from copy import copy
 import typing
+from abc import ABCMeta, abstractmethod
+from asyncio import Queue, TimeoutError, wait_for
+from copy import copy
 
 from .. import const
 from ..dto import Answer, Message, Respondent

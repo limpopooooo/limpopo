@@ -1,15 +1,14 @@
 #!/usr/bin/env python
 
 import asyncio
-import signal
 import logging
-    
-from envparse import env # External dependencies
+import signal
+
+from envparse import env  # External dependencies
 
 from limpopo.question import Question
 from limpopo.services import TelegramService
 from limpopo.storages import PostgreStorage
-
 
 yesno_question = Question(
     topic="Choose yes or no!",
@@ -34,12 +33,10 @@ if __name__ == "__main__":
 
     settings = {
         "session": env("TELEGRAM_SESSION_NAME"),
-        'api_id': env("TELEGRAM_API_ID", cast=int),
-        'api_hash': env("TELEGRAM_API_HASH"),
-        'token': env("TELEGRAM_BOT_TOKEN"),
-        "dialog": {
-            "answer_timeout": env("TELEGRAM_ANSWER_TIMEOUT", cast=int)
-        },
+        "api_id": env("TELEGRAM_API_ID", cast=int),
+        "api_hash": env("TELEGRAM_API_HASH"),
+        "token": env("TELEGRAM_BOT_TOKEN"),
+        "dialog": {"answer_timeout": env("TELEGRAM_ANSWER_TIMEOUT", cast=int)},
     }
 
     storage = PostgreStorage(env("TELEGRAM_POSTGRES_URI"))

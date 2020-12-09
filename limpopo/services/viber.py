@@ -149,7 +149,7 @@ class ViberService(ArchetypeService):
 
         dialog = await self.create_dialog(respondent)
 
-        task = asyncio.ensure_future(self.quiz(dialog))
+        task = asyncio.ensure_future(self.run_quiz(dialog))
         self._tasks[user.id] = task
 
     async def send_message(self, user_id, message):

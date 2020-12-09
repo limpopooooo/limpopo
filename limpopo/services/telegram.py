@@ -53,7 +53,7 @@ class TelegramService(ArchetypeService):
     ):
         super().__init__(quiz, storage, settings, cls_dialog)
         self._client = TelegramClient(
-            settings['session'], settings["api_id"], settings["api_hash"], proxy=None
+            settings["session"], settings["api_id"], settings["api_hash"], proxy=None
         )
 
     async def restore_dialog(

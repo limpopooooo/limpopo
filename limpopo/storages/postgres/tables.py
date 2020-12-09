@@ -1,21 +1,20 @@
 from sqlalchemy import (
     Boolean,
     Column,
+    DateTime,
     Enum,
     ForeignKey,
     ForeignKeyConstraint,
+    Index,
     Integer,
     MetaData,
     String,
-    DateTime,
     Table,
-    Index,
 )
-from sqlalchemy.sql import expression, func
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.sql import expression, func
 
 from limpopo.dto import Messengers
-
 
 metadata = MetaData()
 
