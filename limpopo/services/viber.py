@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import typing
 from time import time
 
 from starlette.applications import Starlette
@@ -84,6 +85,26 @@ class ViberService(ArchetypeService):
         self._server = Server(config=config)
         self._tasks = {}
 
+    def _create_task(self, dialog):
+        task = asyncio.ensure_future(self.run_quiz(dialog))
+        self._tasks[dialog.respondent.id] = task
+
+        logging.info(
+            "Task dialog with user #{} was successfully creatted".format(
+                dialog.respondent.id
+            )
+        )
+
+    def _close_task(self, user_id):
+        task = self._tasks.pop(user_id, None)
+        if task:
+            task.cancel()
+            logging.info(
+                "Task dialog with user #{} was successfully cancelled".format(user_id)
+            )
+        else:
+            logging.warning("Task dialog with user #{} doesn't find".format(user_id))
+
     async def handle_http_request(self, request):
         body = await request.body()
         signature = request.headers.get("X-Viber-Content-Signature")
@@ -130,24 +151,53 @@ class ViberService(ArchetypeService):
         if user.id in self.dialogs:
             return self.dialogs[user.id]
 
+        dialog = await self.restore_dialog(user)
+
+        if dialog is None:
+            await self.send_message(user.id, const.FOREWORD)
+        else:
+            return dialog
+
+    async def restore_dialog(self, user) -> typing.Optional[ViberDialog]:
+
+        last_dialog_id = await self.storage.get_last_dialog_id(
+            respondent_id=user.id, respondent_messenger=self.type
+        )
+
+        if last_dialog_id is None:
+            logging.info("Respondent #{} doesn't have any dialogs".format(user.id))
+            return
+
+        messages = await self.storage.get_messages_from_dialog(last_dialog_id)
+        prepared_questions = {q: a for q, a in messages}
+
+        full_userdata = self.user_to_dict(user)
+
+        respondent = Respondent(
+            id=user.id,
+            messenger=self.type,
+            username=user.name,
+            extra_data=full_userdata,
+        )
+
+        dialog = await self.create_dialog(
+            respondent, identifier=last_dialog_id, prepared_questions=prepared_questions
+        )
+
+        self._create_task(dialog)
+
+        return dialog
+
     async def handle_unsubscribed(self, viber_request):
         user_id = viber_request.user_id
 
         await self.close_dialog(user_id, is_complete=False)
 
-        task = self._tasks.pop(user_id, None)
-        if task:
-            task.cancel()
-            logging.info(
-                "Task dialog with user #{} was successfully cancelled".format(user_id)
-            )
-        else:
-            logging.warning("Task dialog with user #{} doesn't find".format(user_id))
+        self._close_task(user_id)
 
-    async def handle_subscribed(self, viber_request):
-        user = viber_request.user
-
-        full_userdata = {
+    @staticmethod
+    def user_to_dict(user) -> dict:
+        return {
             "name": user.name,
             "avatar": user.avatar,
             "id": user.id,
@@ -155,6 +205,11 @@ class ViberService(ArchetypeService):
             "language": user.language,
             "api_version": user.api_version,
         }
+
+    async def handle_subscribed(self, viber_request):
+        user = viber_request.user
+
+        full_userdata = self.user_to_dict(user)
 
         respondent = Respondent(
             id=user.id,
@@ -164,9 +219,7 @@ class ViberService(ArchetypeService):
         )
 
         dialog = await self.create_dialog(respondent)
-
-        task = asyncio.ensure_future(self.run_quiz(dialog))
-        self._tasks[user.id] = task
+        self._create_task(dialog)
 
     async def send_message(self, user_id, message):
         if not isinstance(message, TextMessage):

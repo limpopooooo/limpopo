@@ -23,7 +23,7 @@ class ArchetypeService(metaclass=ABCMeta):
             await self.quiz(dialog)
             await self.close_dialog(dialog.respondent.id, is_complete=True)
         except TimeoutError:
-            logging.info("Dialog #{} removed due to timeout")
+            logging.info("Dialog #{} removed due to timeout".format(dialog.id))
             await self.close_dialog(dialog.respondent.id, is_complete=None)
         except CancelledError:
             pass
@@ -37,7 +37,7 @@ class ArchetypeService(metaclass=ABCMeta):
         if dialog:
             if is_complete is not None:
                 await dialog.on_close(is_complete)
-            logging.info("Dialog #{} was closed".format(dialog.id))
+                logging.info("Dialog #{} was closed".format(dialog.id))
         else:
             logging.warning(
                 "Dialog with respondent #{} doesn't found".format(respondent_id)
