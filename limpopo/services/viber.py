@@ -98,6 +98,10 @@ class ViberService(ArchetypeService):
         return Response(status_code=200)
 
     async def handle_viber_request(self, viber_request):
+        logging.info(
+            "Received viber_request with event_type {}".format(viber_request.event_type)
+        )
+
         handlers = {
             EventType.SUBSCRIBED: self.handle_subscribed,
             EventType.MESSAGE: self.handle_new_message,
@@ -134,11 +138,11 @@ class ViberService(ArchetypeService):
         task = self._tasks.pop(user_id, None)
         if task:
             task.cancel()
-            logging.info('Task dialog with user #{} was successfully cancelled'.format(user_id))
+            logging.info(
+                "Task dialog with user #{} was successfully cancelled".format(user_id)
+            )
         else:
-            logging.warning('Task dialog with user #{} doesn\'t find'.format(user_id))
-
-
+            logging.warning("Task dialog with user #{} doesn't find".format(user_id))
 
     async def handle_subscribed(self, viber_request):
         user = viber_request.user
@@ -177,7 +181,9 @@ class ViberService(ArchetypeService):
             url, [EventType.MESSAGE, EventType.SUBSCRIBED, EventType.FAILED]
         )
 
-        logging.info('ViberService has successfully signed up for the events: {}'.format(events))
+        logging.info(
+            "ViberService has successfully signed up for the events: {}".format(events)
+        )
 
     async def run_forever(self):
         await self._server.serve()

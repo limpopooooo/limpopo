@@ -1,7 +1,7 @@
 import logging
 import typing
 from abc import ABCMeta, abstractmethod
-from asyncio import Queue, TimeoutError, wait_for
+from asyncio import CancelledError, Queue, TimeoutError, wait_for
 from copy import copy
 
 from .. import const
@@ -25,6 +25,10 @@ class ArchetypeService(metaclass=ABCMeta):
         except TimeoutError:
             logging.info("Dialog #{} removed due to timeout")
             await self.close_dialog(dialog.respondent.id, is_complete=None)
+        except CancelledError:
+            pass
+        except Exception:
+            logging.exception("Catch exception in run_quiz:")
 
     async def close_dialog(
         self, respondent_id: str, is_complete: typing.Optional[bool]
