@@ -132,7 +132,7 @@ class ArchetypeDialog(metaclass=ABCMeta):
 
         if not self._restore_mode:
             message_data = self.prepare_question(question)
-            self.last_question_id = await self.tell(**message_data)
+            self.last_question_id = await self.tell(message_data)
 
         self._restore_mode = False
 

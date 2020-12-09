@@ -162,8 +162,11 @@ class TelegramService(ArchetypeService):
         finally:
             raise events.StopPropagation
 
-    async def send_message(self, user_id, *args, **kwargs):
-        message = await self._client.send_message(int(user_id), *args, **kwargs)
+    async def send_message(self, user_id, message):
+        if isinstance(message, dict):
+            message = await self._client.send_message(int(user_id), **message)
+        elif isinstance(message, str):
+            message = await self._client.send_message(int(user_id), message)
         return message.id
 
     def set_handlers(self):
