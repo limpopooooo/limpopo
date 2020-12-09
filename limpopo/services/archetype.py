@@ -33,10 +33,10 @@ class ArchetypeService(metaclass=ABCMeta):
         if dialog:
             if is_complete is not None:
                 await dialog.on_close(is_complete)
-            logging.info("Dialog {} was closed".format(dialog.id))
+            logging.info("Dialog #{} was closed".format(dialog.id))
         else:
-            logging.info(
-                "Dialog with respondent: {} doesn't found".format(respondent_id)
+            logging.warning(
+                "Dialog with respondent #{} doesn't found".format(respondent_id)
             )
 
     async def create_dialog(
@@ -59,7 +59,7 @@ class ArchetypeService(metaclass=ABCMeta):
         self.dialogs[respondent.id] = dialog
 
         logging.info(
-            "New dialog #{} was created for respondent: {}".format(
+            "New dialog #{} was created for respondent #{}".format(
                 identifier, respondent.id
             )
         )

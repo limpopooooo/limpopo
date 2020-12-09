@@ -47,8 +47,6 @@ class ViberDialog(ArchetypeDialog):
                 "Buttons": buttons,
             }
 
-            print(keyboard)
-
             return TextMessage(
                 text=message, keyboard=keyboard, tracking_data=tracking_data
             )
@@ -101,9 +99,9 @@ class ViberService(ArchetypeService):
 
     async def handle_viber_request(self, viber_request):
         handlers = {
-            EventType.MESSAGE: self.handle_message,
             EventType.SUBSCRIBED: self.handle_subscribed,
-            # EventType.FAILED: 3
+            EventType.MESSAGE: self.handle_new_message,
+            EventType.UNSUBSCRIBED: self.handle_unsubscribed,
         }
 
         handler = handlers.get(viber_request.event_type)
@@ -111,7 +109,7 @@ class ViberService(ArchetypeService):
         if handler:
             return await handler(viber_request)
 
-    async def handle_message(self, viber_request):
+    async def handle_new_message(self, viber_request):
         if viber_request.message.tracking_data is None:
             return
 
@@ -127,6 +125,20 @@ class ViberService(ArchetypeService):
     async def get_or_restore_dialog(self, user):
         if user.id in self.dialogs:
             return self.dialogs[user.id]
+
+    async def handle_unsubscribed(self, viber_request):
+        user_id = viber_request.user_id
+
+        await self.close_dialog(user_id, is_complete=False)
+
+        task = self._tasks.pop(user_id, None)
+        if task:
+            task.cancel()
+            logging.info('Task dialog with user #{} was successfully cancelled'.format(user_id))
+        else:
+            logging.warning('Task dialog with user #{} doesn\'t find'.format(user_id))
+
+
 
     async def handle_subscribed(self, viber_request):
         user = viber_request.user
@@ -164,7 +176,8 @@ class ViberService(ArchetypeService):
         events = self._viber.set_webhook(
             url, [EventType.MESSAGE, EventType.SUBSCRIBED, EventType.FAILED]
         )
-        print(events)
+
+        logging.info('ViberService has successfully signed up for the events: {}'.format(events))
 
     async def run_forever(self):
         await self._server.serve()
