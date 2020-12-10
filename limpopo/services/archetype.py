@@ -128,8 +128,8 @@ class ArchetypeDialog(metaclass=ABCMeta):
     async def ask(self, question: Question) -> Answer:
         self.answer.clear()
 
-        if question.topic in self.prepared_questions:
-            answer_text = self.prepared_questions[question.topic]
+        if question.plain_text in self.prepared_questions:
+            answer_text = self.prepared_questions[question.plain_text]
             self.answer.set(answer_text)
             return copy(self.answer)
 

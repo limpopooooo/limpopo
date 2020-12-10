@@ -6,6 +6,7 @@ from .exceptions import (
     QuestionParameterWrongType,
     QuestionWrongAnswer,
 )
+from .helpers import markdown_to_plain_text
 
 
 class ANY:
@@ -53,6 +54,7 @@ class Question:
             )
 
         self.topic = topic
+        self.plain_text = markdown_to_plain_text(topic)
         self.choices = choices
         self.strict_choose = strict_choose
         self.column_count = column_count

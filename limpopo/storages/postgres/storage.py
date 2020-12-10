@@ -18,7 +18,7 @@ class PostgreStorage(ArchetypeStorage):
                 tables.dialogue_steps.insert().values(
                     {
                         "dialog_id": dialog.id,
-                        "question": question.topic,
+                        "question": question.plain_text,
                         "answer": dialog.answer.text,
                     }
                 )

@@ -19,7 +19,7 @@ from .archetype import ArchetypeDialog, ArchetypeService
 
 class ViberDialog(ArchetypeDialog):
     def prepare_question(self, question):
-        message = question.topic
+        message = question.plain_text
         tracking_data = int(time() * 10 ** 5)
 
         if question.options:
