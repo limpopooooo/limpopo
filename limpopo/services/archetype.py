@@ -80,7 +80,7 @@ class ArchetypeService(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    async def run_forever(self):
+    async def run_forever(self, *args, **kwargs):
         pass
 
     @abstractmethod

@@ -76,13 +76,18 @@ class ViberService(ArchetypeService):
 
         self.app = Starlette(
             routes=[
-                Route("/", endpoint=self.handle_http_request, methods=["POST", "GET"])
+                Route(
+                    settings["http_webhook_path"],
+                    endpoint=self.handle_http_request,
+                    methods=["POST", "GET"],
+                )
             ]
         )
         config = Config(
             self.app, port=self.settings["port"], host=self.settings["host"]
         )
         self._server = Server(config=config)
+
         self._tasks = {}
 
     def _create_task(self, dialog):
@@ -237,6 +242,9 @@ class ViberService(ArchetypeService):
         logging.info(
             "ViberService has successfully signed up for the events: {}".format(events)
         )
+
+    def unset_webhook(self):
+        self._viber.unset_webhook()
 
     async def run_forever(self):
         await self._server.serve()
