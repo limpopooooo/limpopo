@@ -1,10 +1,18 @@
-class QuestionParameterWrongType(Exception):
+class BaseLimpopoException(Exception):
     pass
 
 
-class QuestionChoicesWrongType(Exception):
+class QuestionParameterWrongType(BaseLimpopoException):
     pass
 
 
-class QuestionWrongAnswer(Exception):
+class QuestionChoicesWrongType(BaseLimpopoException):
+    pass
+
+
+class QuestionWrongAnswer(BaseLimpopoException):
+    pass
+
+
+class SettingsError(BaseLimpopoException):
     pass

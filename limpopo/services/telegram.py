@@ -1,12 +1,51 @@
 import asyncio
 import logging
 import typing
+from dataclasses import dataclass
 
 from telethon import Button, TelegramClient, events
+from telethon.sessions.abstract import Session
 
 from .. import const
+from ..exceptions import SettingsError
 from ..dto import Message, Messengers, Respondent
-from .archetype import ArchetypeDialog, ArchetypeService
+from .archetype import ArchetypeDialog, ArchetypeService, DefaultSettings
+from ..storages.archetype import ArchetypeStorage
+
+
+@dataclass
+class TelegramSettings(DefaultSettings):
+    api_id: int
+    api_hash: str
+    token: str
+    session: typing.Union[str, Session] = "default_session"
+    answer_timeout: int = const.ANSWER_TIMEOUT
+
+    def __post_init__(self):
+        if not isinstance(self.api_id, int):
+            raise SettingsError(
+                "TelegramSettings field `api_id` must be of the int type"
+            )
+
+        if not isinstance(self.api_hash, str):
+            raise SettingsError(
+                "TelegramSettings field `api_hash` must be of the str type"
+            )
+
+        if not isinstance(self.token, str):
+            raise SettingsError(
+                "TelegramSettings field `token` must be of the str type"
+            )
+
+        if not (isinstance(self.session, str) or isinstance(self.session, Session)):
+            raise SettingsError(
+                "TelegramSettings field `` must be of the str type or Session instance"
+            )
+
+        if not isinstance(self.answer_timeout, int):
+            raise SettingsError(
+                "TelegramSettings field `answer_timeout` must be of the int type"
+            )
 
 
 class TelegramDialog(ArchetypeDialog):
@@ -49,11 +88,17 @@ class TelegramService(ArchetypeService):
     type = Messengers.telegram
 
     def __init__(
-        self, quiz, storage, settings, cls_dialog=TelegramDialog, *args, **kwargs
+        self,
+        quiz: typing.Callable[[TelegramDialog], None],
+        storage: ArchetypeStorage,
+        settings: TelegramSettings,
+        cls_dialog: TelegramDialog = TelegramDialog,
+        *args,
+        **kwargs
     ):
         super().__init__(quiz, storage, settings, cls_dialog)
         self._client = TelegramClient(
-            settings["session"], settings["api_id"], settings["api_hash"], proxy=None
+            settings.session, settings.api_id, settings.api_hash, proxy=None
         )
 
     async def restore_dialog(
@@ -184,5 +229,5 @@ class TelegramService(ArchetypeService):
 
     async def run_forever(self):
         self.set_handlers()
-        await self._client.start(bot_token=self.settings["token"])
+        await self._client.start(bot_token=self.settings.token)
         await self._client.run_until_disconnected()

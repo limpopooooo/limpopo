@@ -6,12 +6,17 @@ from copy import copy
 
 from .. import const
 from ..dto import Answer, Message, Respondent
-from ..exceptions import QuestionWrongAnswer
+from ..exceptions import QuestionWrongAnswer, SettingsError
 from ..question import Question
 
+class DefaultSettings:
+    pass
 
 class ArchetypeService(metaclass=ABCMeta):
     def __init__(self, quiz, storage, settings, cls_dialog, *args, **kwargs):
+        if not isinstance(settings, DefaultSettings):
+            raise SettingsError("Passed wrong params `settings`, must be DefaultSettings instance")
+
         self.dialogs = {}
         self.quiz = quiz
         self.storage = storage
@@ -50,7 +55,7 @@ class ArchetypeService(metaclass=ABCMeta):
             self,
             respondent,
             prepared_questions=prepared_questions,
-            **self.settings.get("dialog", {}),
+            answer_timeout=self.settings.answer_timeout,
         )
 
         if identifier:

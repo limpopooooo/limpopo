@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import typing
+from dataclasses import dataclass
 from time import time
 
 from starlette.applications import Starlette
@@ -12,9 +13,50 @@ from viberbot.api.bot_configuration import BotConfiguration
 from viberbot.api.event_type import EventType
 from viberbot.api.messages import TextMessage
 
-from ..const import LIMPOPO_AVATAR
+from ..const import LIMPOPO_AVATAR, ANSWER_TIMEOUT
+from ..exceptions import SettingsError
 from ..dto import Message, Messengers, Respondent
-from .archetype import ArchetypeDialog, ArchetypeService
+from .archetype import ArchetypeDialog, ArchetypeService, DefaultSettings
+
+
+@dataclass
+class ViberSettings(DefaultSettings):
+    name: str
+    token: str
+    http_host: str
+    http_port: int
+    http_webhook_path: str = "/"
+    avatar: str = LIMPOPO_AVATAR
+    answer_timeout: int = ANSWER_TIMEOUT
+
+    def __post_init__(self):
+        if not isinstance(self.http_host, str):
+            raise SettingsError(
+                "TelegramSettings field `http_host` must be of the str type"
+            )
+
+        if not isinstance(self.http_port, int):
+            raise SettingsError(
+                "TelegramSettings field `http_port` must be of the int type"
+            )
+
+        if not isinstance(self.http_webhook_path, str):
+            raise SettingsError(
+                "TelegramSettings field `http_webhook_path` must be of the str type"
+            )
+
+        if not isinstance(self.name, str):
+            raise SettingsError("TelegramSettings field `name` must be of the str type")
+
+        if not isinstance(self.token, str):
+            raise SettingsError(
+                "TelegramSettings field `token` must be of the str type"
+            )
+
+        if not isinstance(self.answer_timeout, int):
+            raise SettingsError(
+                "TelegramSettings field `answer_timeout` must be of the int type"
+            )
 
 
 class ViberDialog(ArchetypeDialog):
@@ -62,30 +104,32 @@ class ViberService(ArchetypeService):
     type = Messengers.viber
 
     def __init__(
-        self, quiz, storage, settings, cls_dialog=ViberDialog, *args, **kwargs
+        self,
+        quiz,
+        storage,
+        settings: ViberSettings,
+        cls_dialog=ViberDialog,
+        *args,
+        **kwargs
     ):
         super().__init__(quiz, storage, settings, cls_dialog=cls_dialog)
 
         self._viber = Api(
             BotConfiguration(
-                name=settings["viber_name"],
-                avatar=settings.get("viber_avatar", LIMPOPO_AVATAR),
-                auth_token=settings["viber_token"],
+                name=settings.name, avatar=settings.avatar, auth_token=settings.token
             )
         )
 
         self.app = Starlette(
             routes=[
                 Route(
-                    settings["http_webhook_path"],
+                    settings.http_webhook_path,
                     endpoint=self.handle_http_request,
                     methods=["POST", "GET"],
                 )
             ]
         )
-        config = Config(
-            self.app, port=self.settings["port"], host=self.settings["host"]
-        )
+        config = Config(self.app, port=settings.port, host=settings.host)
         self._server = Server(config=config)
 
         self._tasks = {}
