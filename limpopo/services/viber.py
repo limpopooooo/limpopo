@@ -13,7 +13,7 @@ from viberbot.api.bot_configuration import BotConfiguration
 from viberbot.api.event_type import EventType
 from viberbot.api.messages import TextMessage
 
-from ..const import LIMPOPO_AVATAR, ANSWER_TIMEOUT
+from .. import const
 from ..exceptions import SettingsError
 from ..dto import Message, Messengers, Respondent
 from .archetype import ArchetypeDialog, ArchetypeService, DefaultSettings
@@ -26,43 +26,44 @@ class ViberSettings(DefaultSettings):
     http_host: str
     http_port: int
     http_webhook_path: str = "/"
-    avatar: str = LIMPOPO_AVATAR
-    answer_timeout: int = ANSWER_TIMEOUT
+    avatar: str = const.LIMPOPO_AVATAR
+    answer_timeout: int = const.ANSWER_TIMEOUT
 
     def __post_init__(self):
         if not isinstance(self.http_host, str):
             raise SettingsError(
-                "TelegramSettings field `http_host` must be of the str type"
+                "ViberSettings field `http_host` must be of the str type"
             )
 
         if not isinstance(self.http_port, int):
             raise SettingsError(
-                "TelegramSettings field `http_port` must be of the int type"
+                "ViberSettings field `http_port` must be of the int type"
             )
 
         if not isinstance(self.http_webhook_path, str):
             raise SettingsError(
-                "TelegramSettings field `http_webhook_path` must be of the str type"
+                "ViberSettings field `http_webhook_path` must be of the str type"
+            )
+        elif not self.http_webhook_path.startswith("/"):
+            raise SettingsError(
+                "ViberSettings field `http_webhook_path` must start with '/'"
             )
 
         if not isinstance(self.name, str):
-            raise SettingsError("TelegramSettings field `name` must be of the str type")
+            raise SettingsError("ViberSettings field `name` must be of the str type")
 
         if not isinstance(self.token, str):
-            raise SettingsError(
-                "TelegramSettings field `token` must be of the str type"
-            )
+            raise SettingsError("ViberSettings field `token` must be of the str type")
 
         if not isinstance(self.answer_timeout, int):
             raise SettingsError(
-                "TelegramSettings field `answer_timeout` must be of the int type"
+                "ViberSettings field `answer_timeout` must be of the int type"
             )
 
 
 class ViberDialog(ArchetypeDialog):
     def prepare_question(self, question):
         message = question.plain_text
-        tracking_data = int(time() * 10 ** 5)
 
         if question.options:
             buttons = []
@@ -90,11 +91,9 @@ class ViberDialog(ArchetypeDialog):
                 "Buttons": buttons,
             }
 
-            return TextMessage(
-                text=message, keyboard=keyboard, tracking_data=tracking_data
-            )
+            return TextMessage(text=message, keyboard=keyboard)
 
-        return TextMessage(text=message, tracking_data=tracking_data)
+        return TextMessage(text=message)
 
     def prepare_answer(self, question, answer):
         return answer
@@ -129,10 +128,23 @@ class ViberService(ArchetypeService):
                 )
             ]
         )
-        config = Config(self.app, port=settings.port, host=settings.host)
+        config = Config(self.app, port=settings.http_port, host=settings.http_host)
         self._server = Server(config=config)
 
+        self._keyboard_data = None
         self._tasks = {}
+
+    def expand_tracking_data(self, message) -> None:
+        tracking_data = int(time() * 10 ** 5)
+        message._tracking_data = tracking_data
+
+    def expand_keyboard(self, message) -> None:
+        if self._keyboard_data is None:
+            logging.warning(
+                "Can't add keyboard to the message, because there are no keyboard"
+            )
+
+        message._keyboard = self._keyboard_data
 
     def _create_task(self, dialog):
         task = asyncio.ensure_future(self.run_quiz(dialog))
@@ -185,6 +197,7 @@ class ViberService(ArchetypeService):
 
     async def handle_new_message(self, viber_request):
         if viber_request.message.tracking_data is None:
+            logging.info("Received messageg without tracking_data")
             return
 
         user = viber_request.sender
@@ -208,6 +221,7 @@ class ViberService(ArchetypeService):
             return dialog
 
     async def restore_dialog(self, user) -> typing.Optional[ViberDialog]:
+        logging.debug("Try to restore dialog for user with id #{}".format(user.id))
 
         last_dialog_id = await self.storage.get_last_dialog_id(
             respondent_id=user.id, respondent_messenger=self.type
@@ -270,9 +284,19 @@ class ViberService(ArchetypeService):
         dialog = await self.create_dialog(respondent)
         self._create_task(dialog)
 
-    async def send_message(self, user_id, message):
+    async def send_message(
+        self, user_id, message, keep_keyboard=False, *args, **kwargs
+    ):
         if not isinstance(message, TextMessage):
             message = TextMessage(text=message)
+
+        if message._keyboard:
+            self._keyboard_data = message._keyboard
+
+        self.expand_tracking_data(message)
+
+        if keep_keyboard:
+            self.expand_keyboard(message)
 
         self._viber.send_messages(user_id, message)
 

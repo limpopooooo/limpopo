@@ -9,13 +9,17 @@ from ..dto import Answer, Message, Respondent
 from ..exceptions import QuestionWrongAnswer, SettingsError
 from ..question import Question
 
+
 class DefaultSettings:
     pass
+
 
 class ArchetypeService(metaclass=ABCMeta):
     def __init__(self, quiz, storage, settings, cls_dialog, *args, **kwargs):
         if not isinstance(settings, DefaultSettings):
-            raise SettingsError("Passed wrong params `settings`, must be DefaultSettings instance")
+            raise SettingsError(
+                "Passed wrong params `settings`, must be DefaultSettings instance"
+            )
 
         self.dialogs = {}
         self.quiz = quiz
@@ -160,7 +164,7 @@ class ArchetypeDialog(metaclass=ABCMeta):
 
                 return copy(self.answer)
             except QuestionWrongAnswer:
-                await self.tell(const.WRONG_ANSWER_FORMAT)
+                await self.tell(const.WRONG_ANSWER_FORMAT, keep_keyboard=True)
                 self.answer.clear()
 
     async def tell(self, *args, **kwargs) -> int:
