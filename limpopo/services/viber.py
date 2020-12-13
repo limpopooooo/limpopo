@@ -143,6 +143,7 @@ class ViberService(ArchetypeService):
             logging.warning(
                 "Can't add keyboard to the message, because there are no keyboard"
             )
+            return
 
         message._keyboard = self._keyboard_data
 
