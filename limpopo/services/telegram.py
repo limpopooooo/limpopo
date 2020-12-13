@@ -7,10 +7,10 @@ from telethon import Button, TelegramClient, events
 from telethon.sessions.abstract import Session
 
 from .. import const
-from ..exceptions import SettingsError
 from ..dto import Message, Messengers, Respondent
-from .archetype import ArchetypeDialog, ArchetypeService, DefaultSettings
+from ..exceptions import SettingsError
 from ..storages.archetype import ArchetypeStorage
+from .archetype import ArchetypeDialog, ArchetypeService, DefaultSettings
 
 
 @dataclass

@@ -14,8 +14,8 @@ from viberbot.api.event_type import EventType
 from viberbot.api.messages import TextMessage
 
 from .. import const
-from ..exceptions import SettingsError
 from ..dto import Message, Messengers, Respondent
+from ..exceptions import SettingsError
 from .archetype import ArchetypeDialog, ArchetypeService, DefaultSettings
 
 
