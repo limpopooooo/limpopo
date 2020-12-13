@@ -185,29 +185,33 @@ class ViberService(ArchetypeService):
             "Received viber_request with event_type {}".format(viber_request.event_type)
         )
 
-        handlers = {
-            EventType.SUBSCRIBED: self.handle_subscribed,
-            EventType.MESSAGE: self.handle_new_message,
-            EventType.UNSUBSCRIBED: self.handle_unsubscribed,
-        }
+        if viber_request.event_type == EventType.SUBSCRIBED:
+            return await self.handle_subscribed(viber_request.user)
+        elif viber_request.event_type == EventType.UNSUBSCRIBED:
+            return await self.handle_unsubscribed(viber_request.user_id)
+        elif viber_request.event_type == EventType.MESSAGE:
+            return await self.handle_new_message(viber_request.sender, viber_request.message)
 
-        handler = handlers.get(viber_request.event_type)
+    async def handle_new_message(self, user, message):
+        message_text = message.text.strip()
 
-        if handler:
-            return await handler(viber_request)
-
-    async def handle_new_message(self, viber_request):
-        if viber_request.message.tracking_data is None:
-            logging.info("Received messageg without tracking_data")
+        if message_text == '/start':
+            await self.handle_unsubscribed(user.id)
+            await self.handle_subscribed(user)
+            return
+        elif message_text == '/cancel':
+            await self.handle_unsubscribed(user.id)
             return
 
-        user = viber_request.sender
+        if message.tracking_data is None:
+            logging.info("Received messageg without tracking_data")
+            return
 
         dialog = await self.get_or_restore_dialog(user)
 
         if dialog:
-            identifier = int(viber_request.message.tracking_data) + 1
-            message = Message(identifier, viber_request.message.text)
+            identifier = int(message.tracking_data) + 1
+            message = Message(identifier, message_text)
             await dialog.handle_message(message)
 
     async def get_or_restore_dialog(self, user):
@@ -252,9 +256,7 @@ class ViberService(ArchetypeService):
 
         return dialog
 
-    async def handle_unsubscribed(self, viber_request):
-        user_id = viber_request.user_id
-
+    async def handle_unsubscribed(self, user_id):
         await self.close_dialog(user_id, is_complete=False)
 
         self._close_task(user_id)
@@ -270,9 +272,7 @@ class ViberService(ArchetypeService):
             "api_version": user.api_version,
         }
 
-    async def handle_subscribed(self, viber_request):
-        user = viber_request.user
-
+    async def handle_subscribed(self, user):
         full_userdata = self.user_to_dict(user)
 
         respondent = Respondent(
