@@ -9,8 +9,7 @@ from .exceptions import (
 from .helpers import markdown_to_plain_text
 
 
-class ANY:
-    pass
+ANY = typing.TypeVar('ANY')
 
 
 class Question:
