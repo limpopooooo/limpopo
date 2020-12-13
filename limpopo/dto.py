@@ -7,7 +7,6 @@ from dataclasses import dataclass
 class Messengers(enum.Enum):
     telegram = 1
     viber = 2
-    whatapp = 3
 
 
 @dataclass
