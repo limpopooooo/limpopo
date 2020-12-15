@@ -16,3 +16,7 @@ class QuestionWrongAnswer(BaseLimpopoException):
 
 class SettingsError(BaseLimpopoException):
     pass
+
+
+class DialogStopped(BaseLimpopoException):
+    pass

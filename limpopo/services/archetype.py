@@ -4,9 +4,12 @@ from abc import ABCMeta, abstractmethod
 from asyncio import CancelledError, Queue, TimeoutError, wait_for
 from copy import copy
 
+from tenacity import RetryError
+
 from .. import const
 from ..dto import Answer, Message, Respondent
-from ..exceptions import QuestionWrongAnswer, SettingsError
+from ..exceptions import DialogStopped, QuestionWrongAnswer, SettingsError
+from ..helpers import with_retry
 from ..question import Question
 
 
@@ -34,7 +37,7 @@ class ArchetypeService(metaclass=ABCMeta):
         except TimeoutError:
             logging.info("Dialog #{} removed due to timeout".format(dialog.id))
             await self.close_dialog(dialog.respondent.id, is_complete=None)
-        except CancelledError:
+        except (CancelledError, DialogStopped):
             pass
         except Exception:
             logging.exception("Catch exception in run_quiz:")
@@ -93,8 +96,8 @@ class ArchetypeService(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    async def send_message(self, user_id, *args, **kwargs):
-        pass
+    async def send_message(self, user_id, *args, **kwargs) -> int:
+        return 1
 
 
 class ArchetypeDialog(metaclass=ABCMeta):
@@ -160,7 +163,19 @@ class ArchetypeDialog(metaclass=ABCMeta):
 
                 question.validate_answer(self.answer)
 
-                await self.service.storage.save_question_and_answer(self, question)
+                try:
+                    await with_retry(
+                        lambda: self.service.storage.save_question_and_answer(
+                            self, question
+                        ),
+                        exceptions=self.service.storage.io_exceptions,
+                        stop_callback_coro=self.service.stop,
+                    )
+                except RetryError:
+                    logging.error(
+                        "Dialog #{} stopped due to Storage IO error".format(self.id)
+                    )
+                    raise DialogStopped(self.id)
 
                 return copy(self.answer)
             except QuestionWrongAnswer:
@@ -174,7 +189,15 @@ class ArchetypeDialog(metaclass=ABCMeta):
         await self._queue_answers.put(message)
 
     async def on_start(self):
-        return await self.service.storage.create_dialog(self)
+        return await with_retry(
+            lambda: self.service.storage.create_dialog(self),
+            exceptions=self.service.storage.io_exceptions,
+            stop_callback_coro=self.service.stop,
+        )
 
     async def on_close(self, is_complete):
-        await self.service.storage.close_dialog(self, is_complete)
+        await with_retry(
+            lambda: self.service.storage.close_dialog(self, is_complete),
+            exceptions=self.service.storage.io_exceptions,
+            stop_callback_coro=self.service.stop,
+        )

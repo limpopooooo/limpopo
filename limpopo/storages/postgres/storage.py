@@ -1,6 +1,6 @@
 from sqlalchemy import select, text
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.sql import func
 
@@ -9,6 +9,8 @@ from . import tables
 
 
 class PostgreStorage(ArchetypeStorage):
+    io_exceptions = (ConnectionRefusedError, SQLAlchemyError)
+
     def __init__(self, uri):
         self._engine = create_async_engine(uri)
 

@@ -3,12 +3,14 @@ import logging
 import typing
 from dataclasses import dataclass
 
+from tenacity import RetryError
 from telethon import Button, TelegramClient, events
 from telethon.sessions.abstract import Session
 
 from .. import const
 from ..dto import Message, Messengers, Respondent
 from ..exceptions import SettingsError
+from ..helpers import with_retry
 from ..storages.archetype import ArchetypeStorage
 from .archetype import ArchetypeDialog, ArchetypeService, DefaultSettings
 
@@ -105,17 +107,30 @@ class TelegramService(ArchetypeService):
         self, respondent_id, event
     ) -> typing.Optional[TelegramDialog]:
 
-        last_dialog_id = await self.storage.get_last_dialog_id(
-            respondent_id=respondent_id, respondent_messenger=self.type
-        )
-
-        if last_dialog_id is None:
-            logging.info(
-                "Respondent #{} doesn't have any dialogs".format(respondent_id)
+        try:
+            last_dialog_id = await with_retry(
+                lambda: self.storage.get_last_dialog_id(
+                    respondent_id=respondent_id, respondent_messenger=self.type
+                ),
+                exceptions=self.storage.io_exceptions,
+                stop_callback_coro=self.stop,
             )
+
+            if last_dialog_id is None:
+                logging.info(
+                    "Respondent #{} doesn't have any dialogs".format(respondent_id)
+                )
+                return
+
+            messages = await with_retry(
+                lambda: self.storage.get_messages_from_dialog(last_dialog_id),
+                exceptions=self.storage.io_exceptions,
+                stop_callback_coro=self.stop,
+            )
+        except RetryError:
+            logging.error("Can't restore dialog due to Storage IO error")
             return
 
-        messages = await self.storage.get_messages_from_dialog(last_dialog_id)
         prepared_questions = {q: a for q, a in messages}
 
         respondent = Respondent(

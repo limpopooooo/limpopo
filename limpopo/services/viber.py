@@ -8,6 +8,7 @@ from starlette.applications import Starlette
 from starlette.responses import Response
 from starlette.routing import Route
 from uvicorn import Config, Server
+from tenacity import RetryError
 from viberbot import Api
 from viberbot.api.bot_configuration import BotConfiguration
 from viberbot.api.event_type import EventType
@@ -16,6 +17,7 @@ from viberbot.api.messages import TextMessage
 from .. import const
 from ..dto import Message, Messengers, Respondent
 from ..exceptions import SettingsError
+from ..helpers import with_retry
 from .archetype import ArchetypeDialog, ArchetypeService, DefaultSettings
 
 
@@ -228,15 +230,30 @@ class ViberService(ArchetypeService):
     async def restore_dialog(self, user) -> typing.Optional[ViberDialog]:
         logging.debug("Try to restore dialog for user with id #{}".format(user.id))
 
-        last_dialog_id = await self.storage.get_last_dialog_id(
-            respondent_id=user.id, respondent_messenger=self.type
-        )
+        try:
+            last_dialog_id = await with_retry(
+                lambda: self.storage.get_last_dialog_id(
+                    respondent_id=user.id, respondent_messenger=self.type
+                ),
+                exceptions=self.storage.io_exceptions,
+                stop_callback_coro=self.stop,
+            )
 
-        if last_dialog_id is None:
-            logging.info("Respondent #{} doesn't have any dialogs".format(user.id))
+            if last_dialog_id is None:
+                logging.info(
+                    "Respondent #{} doesn't have any dialogs".format(user.id)
+                )
+                return
+
+            messages = await with_retry(
+                lambda: self.storage.get_messages_from_dialog(last_dialog_id),
+                exceptions=self.storage.io_exceptions,
+                stop_callback_coro=self.stop,
+            )
+        except RetryError:
+            logging.error("Can't restore dialog due to Storage IO error")
             return
 
-        messages = await self.storage.get_messages_from_dialog(last_dialog_id)
         prepared_questions = {q: a for q, a in messages}
 
         full_userdata = self.user_to_dict(user)
@@ -320,3 +337,4 @@ class ViberService(ArchetypeService):
 
     async def stop(self):
         self._server.should_exit = True
+        self._server.force_exit = True

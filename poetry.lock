@@ -15,15 +15,15 @@ optional = false
 python-versions = ">=3.6"
 
 [package.dependencies]
-regex = ">=2020.1.8"
+appdirs = "*"
+click = ">=7.1.2"
 dataclasses = {version = ">=0.6", markers = "python_version < \"3.7\""}
 mypy-extensions = ">=0.4.3"
-typed-ast = ">=1.4.0"
-toml = ">=0.10.1"
-typing-extensions = ">=3.7.4"
 pathspec = ">=0.6,<1"
-click = ">=7.1.2"
-appdirs = "*"
+regex = ">=2020.1.8"
+toml = ">=0.10.1"
+typed-ast = ">=1.4.0"
+typing-extensions = ">=3.7.4"
 
 [package.extras]
 colorama = ["colorama (>=0.4.3)"]
@@ -65,8 +65,8 @@ optional = false
 python-versions = ">=3.3"
 
 [package.dependencies]
-pycparser = "*"
 cffi = ">=1.0.0"
+pycparser = "*"
 
 [[package]]
 name = "dataclasses"
@@ -163,9 +163,9 @@ optional = false
 python-versions = ">=3.6,<4.0"
 
 [package.extras]
-colors = ["colorama (>=0.4.3,<0.5.0)"]
 pipfile_deprecated_finder = ["pipreqs", "requirementslib"]
 requirements_deprecated_finder = ["pipreqs", "pip-api"]
+colors = ["colorama (>=0.4.3,<0.5.0)"]
 
 [[package]]
 name = "markdown"
@@ -222,14 +222,14 @@ optional = false
 python-versions = ">=3.6.1"
 
 [package.dependencies]
-virtualenv = ">=20.0.8"
-pyyaml = ">=5.1"
-importlib-resources = {version = "*", markers = "python_version < \"3.7\""}
 cfgv = ">=2.0.0"
-nodeenv = ">=0.11.1"
-importlib-metadata = {version = "*", markers = "python_version < \"3.8\""}
 identify = ">=1.0.0"
+importlib-metadata = {version = "*", markers = "python_version < \"3.8\""}
+importlib-resources = {version = "*", markers = "python_version < \"3.7\""}
+nodeenv = ">=0.11.1"
+pyyaml = ">=5.1"
 toml = "*"
+virtualenv = ">=20.0.8"
 
 [[package]]
 name = "pre-commit-hooks"
@@ -240,8 +240,8 @@ optional = false
 python-versions = ">=3.6.1"
 
 [package.dependencies]
-toml = "*"
 "ruamel.yaml" = ">=0.15"
+toml = "*"
 
 [[package]]
 name = "pyaes"
@@ -345,7 +345,7 @@ python-versions = "*"
 name = "six"
 version = "1.15.0"
 description = "Python 2 and 3 compatibility utilities"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*"
 
@@ -370,11 +370,25 @@ python-versions = ">=3.5"
 
 [package.dependencies]
 cryptg = {version = "*", optional = true, markers = "extra == \"cryptg\""}
-rsa = "*"
 pyaes = "*"
+rsa = "*"
 
 [package.extras]
 cryptg = ["cryptg"]
+
+[[package]]
+name = "tenacity"
+version = "6.3.0"
+description = "Retry code until it succeeds"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+six = ">=1.9.0"
+
+[package.extras]
+doc = ["reno", "sphinx", "tornado (>=4.5)"]
 
 [[package]]
 name = "toml"
@@ -409,8 +423,8 @@ optional = false
 python-versions = "*"
 
 [package.dependencies]
-h11 = ">=0.8"
 click = ">=7.0.0,<8.0.0"
+h11 = ">=0.8"
 typing-extensions = {version = "*", markers = "python_version < \"3.8\""}
 
 [package.extras]
@@ -425,12 +439,12 @@ optional = false
 python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,>=2.7"
 
 [package.dependencies]
+appdirs = ">=1.4.3,<2"
 distlib = ">=0.3.1,<1"
 filelock = ">=3.0.0,<4"
+importlib-metadata = {version = ">=0.12", markers = "python_version < \"3.8\""}
 importlib-resources = {version = ">=1.0", markers = "python_version < \"3.7\""}
 six = ">=1.9.0,<2"
-importlib-metadata = {version = ">=0.12", markers = "python_version < \"3.8\""}
-appdirs = ">=1.4.3,<2"
 
 [package.extras]
 docs = ["proselint (>=0.10.2)", "sphinx (>=3)", "sphinx-argparse (>=0.2.5)", "sphinx-rtd-theme (>=0.4.3)", "towncrier (>=19.9.0rc1)"]
@@ -449,13 +463,13 @@ docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["pytest (>=3.5,!=3.7.3)", "pytest-checkdocs (>=1.2.3)", "pytest-flake8", "pytest-cov", "jaraco.test (>=3.2.0)", "jaraco.itertools", "func-timeout", "pytest-black (>=0.3.7)", "pytest-mypy"]
 
 [extras]
-postgres-storage = []
 postgres-migrations = []
+postgres-storage = []
 
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.6.1,<4.0"
-content-hash = "a1d3d17901a276465e5d1d40e256f67a4ab0a2de191e75255c8e92e4a7deb8e2"
+content-hash = "db34dfd39de41dc2f339739d8628aa498d97602e87072665c3e9bac88128f6d6"
 
 [metadata.files]
 appdirs = [
@@ -745,6 +759,10 @@ starlette = [
 telethon = [
     {file = "Telethon-1.18.2-py3-none-any.whl", hash = "sha256:5e4eedbd81baeae2187e8bc81f3d3880d965914a46ce3855850076496c53f634"},
     {file = "Telethon-1.18.2.tar.gz", hash = "sha256:4695ff737692f745c2e44f1f22996b415ce7715d7e764e27b0528fb61d30cefb"},
+]
+tenacity = [
+    {file = "tenacity-6.3.0-py2.py3-none-any.whl", hash = "sha256:a0320f92bd2509854b6a12a8ebc4bc70388e5641f70ddde941a0ea758503377e"},
+    {file = "tenacity-6.3.0.tar.gz", hash = "sha256:8f2fc6b7605c4cc0331afedaff6a6867454c65aa2ba29d317cbf92bfc6f7bfac"},
 ]
 toml = [
     {file = "toml-0.10.2-py2.py3-none-any.whl", hash = "sha256:806143ae5bfb6a3c6e736a764057db0e6a0e05e338b5630894a5f779cabb4f9b"},
