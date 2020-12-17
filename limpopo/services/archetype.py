@@ -233,6 +233,9 @@ class ArchetypeDialog(metaclass=ABCMeta):
     async def handle_message(self, message: Message):
         await self._queue_answers.put(message)
 
+    async def pause(self):
+        pass
+
     async def on_start(self):
         return await with_retry(
             lambda: self.service.storage.create_dialog(self),

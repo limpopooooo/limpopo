@@ -48,6 +48,7 @@ class _local_settings(EmptySettings):
 class TelegramSettings(DefaultSettings, _local_settings):
     pass
 
+
 class TelegramDialog(ArchetypeDialog):
     def prepare_question(self, question) -> dict:
         message = question.topic
@@ -155,7 +156,9 @@ class TelegramService(ArchetypeService):
         dialog = await self.restore_dialog(respondent_id, event)
 
         if dialog is None and self.settings.reply_without_dialogue:
-            foreword_message = const.FOREWORD.format(start_command=self.settings.start_command)
+            foreword_message = const.FOREWORD.format(
+                start_command=self.settings.start_command
+            )
             await self._client.send_message(event.chat_id, foreword_message)
         else:
             return dialog
@@ -186,22 +189,54 @@ class TelegramService(ArchetypeService):
 
     async def handle_start(self, event):
         try:
+            logging.info("Handle start command respondent #{}".format(event.chat_id))
+
             respondent_id = str(event.chat_id)
             if respondent_id in self.dialogs:
-                await self.close_dialog(respondent_id, is_complete=False)
+                logging.info(
+                    "Respondent #{} try to start already started dialog".format(
+                        respondent_id
+                    )
+                )
+                return
 
-            respondent = Respondent(
-                id=respondent_id,
-                messenger=self.type,
-                username=event.chat.username,
-                first_name=event.chat.first_name,
-                last_name=event.chat.last_name,
-            )
+            dialog = await self.restore_dialog(respondent_id, event)
 
-            dialog = await self.create_dialog(respondent)
-            await self.run_quiz(dialog)
+            if dialog is None:
+                respondent = Respondent(
+                    id=respondent_id,
+                    messenger=self.type,
+                    username=event.chat.username,
+                    first_name=event.chat.first_name,
+                    last_name=event.chat.last_name,
+                )
+
+                dialog = await self.create_dialog(respondent)
+                await self.run_quiz(dialog)
         except Exception:
             logging.exception("Catch exception in handle_start:")
+            raise
+        finally:
+            raise events.StopPropagation
+
+    async def handle_pause(self, event):
+        try:
+            logging.info("Handle pause command respondent #{}".format(event.chat_id))
+
+            dialog = await self.get_or_restore_dialog(event)
+
+            if dialog is None:
+                logging.warning(
+                    "Can't set pause to dialogue with respondent #{}, dialog doesn't found".format(
+                        event.chat_id
+                    )
+                )
+                return
+
+            await dialog.pause()
+
+        except Exception:
+            logging.exception("Catch exception in handle_pause:")
             raise
         finally:
             raise events.StopPropagation
@@ -216,18 +251,24 @@ class TelegramService(ArchetypeService):
 
             await self.close_dialog(respondent_id, is_complete=False)
 
-            cancel_message = const.CANCEL.format(start_command=self.settings.start_command)
+            cancel_message = const.CANCEL.format(
+                start_command=self.settings.start_command
+            )
             await self._client.send_message(event.chat, cancel_message)
         except Exception:
             logging.exception("Catch exception in handle_cancel:")
         finally:
             raise events.StopPropagation
 
-    async def send_message(self, user_id, message, *args, **kwargs):
+    async def send_message(self, user_id, message, keep_keyboard=False, *args, **kwargs):
         if isinstance(message, dict):
             message = await self._client.send_message(int(user_id), **message)
         elif isinstance(message, str):
-            message = {"message": message, "buttons": Button.clear()}
+            message = {"message": message}
+
+            if not keep_keyboard:
+                message["buttons"] = Button.clear()
+
             message = await self._client.send_message(int(user_id), **message)
         return message.id
 
