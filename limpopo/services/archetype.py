@@ -36,6 +36,31 @@ class DefaultSettings(EmptySettings):
                 "Settings field `answer_timeout` must be of the int type"
             )
 
+        if not isinstance(self.reply_without_dialogue, bool):
+            raise SettingsError(
+                "Settings field `reply_without_dialogue` must be of the bool type"
+            )
+
+        if not isinstance(self.start_command, str):
+            raise SettingsError(
+                "Settings field `start_command` must be of the str type"
+            )
+
+        if not isinstance(self.cancel_command, str):
+            raise SettingsError(
+                "Settings field `cancel_command` must be of the str type"
+            )
+
+        if not isinstance(self.pause_command, str):
+            raise SettingsError(
+                "Settings field `pause_command` must be of the str type"
+            )
+
+        if not isinstance(self.renew_command, str):
+            raise SettingsError(
+                "Settings field `renew_command` must be of the str type"
+            )
+
 
 class ArchetypeService(metaclass=ABCMeta):
     def __init__(self, quiz, storage, settings, cls_dialog, *args, **kwargs):
