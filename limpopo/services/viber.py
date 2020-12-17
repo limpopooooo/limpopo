@@ -18,18 +18,17 @@ from .. import const
 from ..dto import Message, Messengers, Respondent
 from ..exceptions import SettingsError
 from ..helpers import with_retry
-from .archetype import ArchetypeDialog, ArchetypeService, DefaultSettings
+from .archetype import ArchetypeDialog, ArchetypeService, DefaultSettings, EmptySettings
 
 
 @dataclass
-class ViberSettings(DefaultSettings):
+class _local_settings(EmptySettings):
     name: str
     token: str
     http_host: str
     http_port: int
     http_webhook_path: str = "/"
     avatar: str = const.LIMPOPO_AVATAR
-    answer_timeout: int = const.ANSWER_TIMEOUT
 
     def __post_init__(self):
         if not isinstance(self.http_host, str):
@@ -57,10 +56,10 @@ class ViberSettings(DefaultSettings):
         if not isinstance(self.token, str):
             raise SettingsError("ViberSettings field `token` must be of the str type")
 
-        if not isinstance(self.answer_timeout, int):
-            raise SettingsError(
-                "ViberSettings field `answer_timeout` must be of the int type"
-            )
+
+@dataclass
+class ViberSettings(DefaultSettings, _local_settings):
+    pass
 
 
 class ViberDialog(ArchetypeDialog):
@@ -197,11 +196,11 @@ class ViberService(ArchetypeService):
     async def handle_new_message(self, user, message):
         message_text = message.text.strip()
 
-        if message_text == '/start':
+        if message_text == self.settings.start_command:
             await self.handle_unsubscribed(user.id)
             await self.handle_subscribed(user)
             return
-        elif message_text == '/cancel':
+        elif message_text == self.settings.cancel_command:
             await self.handle_unsubscribed(user.id)
             return
 
@@ -222,8 +221,9 @@ class ViberService(ArchetypeService):
 
         dialog = await self.restore_dialog(user)
 
-        if dialog is None:
-            await self.send_message(user.id, const.FOREWORD)
+        if dialog is None and self.settings.reply_without_dialogue:
+            foreword_message = const.FOREWORD.format(start_command=self.settings.start_command)
+            await self.send_message(user.id, foreword_message)
         else:
             return dialog
 

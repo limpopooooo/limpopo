@@ -12,16 +12,15 @@ from ..dto import Message, Messengers, Respondent
 from ..exceptions import SettingsError
 from ..helpers import with_retry
 from ..storages.archetype import ArchetypeStorage
-from .archetype import ArchetypeDialog, ArchetypeService, DefaultSettings
+from .archetype import ArchetypeDialog, ArchetypeService, EmptySettings, DefaultSettings
 
 
 @dataclass
-class TelegramSettings(DefaultSettings):
+class _local_settings(EmptySettings):
     api_id: int
     api_hash: str
     token: str
     session: typing.Union[str, Session] = "default_session"
-    answer_timeout: int = const.ANSWER_TIMEOUT
 
     def __post_init__(self):
         if not isinstance(self.api_id, int):
@@ -44,11 +43,10 @@ class TelegramSettings(DefaultSettings):
                 "TelegramSettings field `` must be of the str type or Session instance"
             )
 
-        if not isinstance(self.answer_timeout, int):
-            raise SettingsError(
-                "TelegramSettings field `answer_timeout` must be of the int type"
-            )
 
+@dataclass
+class TelegramSettings(DefaultSettings, _local_settings):
+    pass
 
 class TelegramDialog(ArchetypeDialog):
     def prepare_question(self, question) -> dict:
@@ -156,8 +154,9 @@ class TelegramService(ArchetypeService):
 
         dialog = await self.restore_dialog(respondent_id, event)
 
-        if dialog is None:
-            await self._client.send_message(event.chat_id, const.FOREWORD)
+        if dialog is None and self.settings.reply_without_dialogue:
+            foreword_message = const.FOREWORD.format(start_command=self.settings.start_command)
+            await self._client.send_message(event.chat_id, foreword_message)
         else:
             return dialog
 
@@ -216,7 +215,9 @@ class TelegramService(ArchetypeService):
                 return
 
             await self.close_dialog(respondent_id, is_complete=False)
-            await self._client.send_message(event.chat, const.CANCEL)
+
+            cancel_message = const.CANCEL.format(start_command=self.settings.start_command)
+            await self._client.send_message(event.chat, cancel_message)
         except Exception:
             logging.exception("Catch exception in handle_cancel:")
         finally:
@@ -232,10 +233,10 @@ class TelegramService(ArchetypeService):
 
     def set_handlers(self):
         self._client.add_event_handler(
-            self.handle_start, events.NewMessage(pattern="/start")
+            self.handle_start, events.NewMessage(pattern=self.settings.start_command)
         )
         self._client.add_event_handler(
-            self.handle_cancel, events.NewMessage(pattern="/cancel")
+            self.handle_cancel, events.NewMessage(pattern=self.settings.cancel_command)
         )
         self._client.add_event_handler(self.handle_new_message, events.NewMessage)
         self._client.add_event_handler(self.handle_click_button, events.CallbackQuery)

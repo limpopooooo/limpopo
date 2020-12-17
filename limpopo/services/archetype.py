@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import logging
 import typing
 from abc import ABCMeta, abstractmethod
@@ -13,8 +14,27 @@ from ..helpers import with_retry
 from ..question import Question
 
 
-class DefaultSettings:
-    pass
+class EmptySettings:
+    def __post_init__(self):
+        pass
+
+
+@dataclass
+class DefaultSettings(EmptySettings):
+    answer_timeout: int = const.ANSWER_TIMEOUT
+    reply_without_dialogue: bool = True
+    start_command: str = '/start'
+    cancel_command: str = '/cancel'
+    pause_command: str = '/pause'
+    renew_command: str = '/renew'
+
+    def __post_init__(self):
+        super().__post_init__()
+
+        if not isinstance(self.answer_timeout, int):
+            raise SettingsError(
+                "Settings field `answer_timeout` must be of the int type"
+            )
 
 
 class ArchetypeService(metaclass=ABCMeta):
