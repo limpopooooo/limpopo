@@ -2,7 +2,7 @@ from dataclasses import dataclass
 import logging
 import typing
 from abc import ABCMeta, abstractmethod
-from asyncio import CancelledError, Queue, TimeoutError, wait_for
+from asyncio import CancelledError, Queue, TimeoutError, wait_for, create_task
 from copy import copy
 
 from tenacity import RetryError
@@ -76,8 +76,11 @@ class ArchetypeService(metaclass=ABCMeta):
         self.cls_dialog = cls_dialog
 
     async def run_quiz(self, dialog):
+        logging.info('Task for dialog #{} started'.format(dialog.id))
+
         try:
-            await self.quiz(dialog)
+            dialog.run_task(self.quiz)
+            await dialog.task
             await self.close_dialog(dialog.respondent.id, is_complete=True)
         except TimeoutError:
             logging.info("Dialog #{} removed due to timeout".format(dialog.id))
@@ -86,12 +89,18 @@ class ArchetypeService(metaclass=ABCMeta):
             pass
         except Exception:
             logging.exception("Catch exception in run_quiz:")
+        finally:
+            logging.info('Task for dialog #{} stopped'.format(dialog.id))
+
 
     async def close_dialog(
         self, respondent_id: str, is_complete: typing.Optional[bool]
     ):
         dialog = self.dialogs.pop(respondent_id, None)
         if dialog:
+            if dialog.task:
+                dialog.task.cancel()
+
             if is_complete is not None:
                 await dialog.on_close(is_complete)
                 logging.info("Dialog #{} was closed".format(dialog.id))
@@ -101,7 +110,7 @@ class ArchetypeService(metaclass=ABCMeta):
             )
 
     async def create_dialog(
-        self, respondent: Respondent, identifier=None, prepared_questions=None
+        self, respondent: Respondent, identifier=None, prepared_questions=None, repeat_last_question=False
     ):
         dialog = self.cls_dialog(
             self,
@@ -110,9 +119,9 @@ class ArchetypeService(metaclass=ABCMeta):
             answer_timeout=self.settings.answer_timeout,
         )
 
-        if identifier:
+        if identifier and not repeat_last_question:
             dialog.set_restore_mode()
-        else:
+        elif identifier is None:
             identifier = await dialog.on_start()
 
         dialog.set_identifier(identifier)
@@ -160,6 +169,7 @@ class ArchetypeDialog(metaclass=ABCMeta):
         self.service = service
         self.respondent = respondent
 
+        self.task = None
         self.last_question_id = 0
         self.answer = Answer()
         self.prepared_questions = prepared_questions or {}
@@ -181,6 +191,9 @@ class ArchetypeDialog(metaclass=ABCMeta):
     @abstractmethod
     def prepare_answer(self, question: Question, answer: Answer) -> Answer:
         pass
+
+    def run_task(self, func):
+        self.task = create_task(func(self))
 
     async def ask(self, question: Question) -> Answer:
         self.answer.clear()
@@ -234,7 +247,12 @@ class ArchetypeDialog(metaclass=ABCMeta):
         await self._queue_answers.put(message)
 
     async def pause(self):
-        pass
+        done = await self.service.storage.pause(self)
+
+        if done:
+            logging.info('Dialog #{} on pause'.format(self.id))
+        else:
+            logging.warning('Dialog #{} already on pause'.format(self.id))
 
     async def on_start(self):
         return await with_retry(

@@ -103,7 +103,7 @@ class TelegramService(ArchetypeService):
         )
 
     async def restore_dialog(
-        self, respondent_id, event
+        self, respondent_id, event, repeat_last_question=False
     ) -> typing.Optional[TelegramDialog]:
 
         try:
@@ -141,7 +141,10 @@ class TelegramService(ArchetypeService):
         )
 
         dialog = await self.create_dialog(
-            respondent, identifier=last_dialog_id, prepared_questions=prepared_questions
+            respondent,
+            identifier=last_dialog_id,
+            prepared_questions=prepared_questions,
+            repeat_last_question=repeat_last_question,
         )
 
         asyncio.ensure_future(self.run_quiz(dialog))
@@ -187,6 +190,34 @@ class TelegramService(ArchetypeService):
             logging.exception("Catch exception in handle_new_message:")
             raise
 
+    async def cancel_pause(self, respondent_id):
+        try:
+            last_dialog_id = await with_retry(
+                lambda: self.storage.get_last_dialog_id(
+                    respondent_id=respondent_id,
+                    respondent_messenger=self.type,
+                    on_pause=True,
+                ),
+                exceptions=self.storage.io_exceptions,
+                stop_callback_coro=self.stop,
+            )
+
+            if last_dialog_id is None:
+                logging.info(
+                    "Respondent #{} doesn't have dialog on pause".format(respondent_id)
+                )
+                return
+
+            return await with_retry(
+                lambda: self.storage.cancel_pause(last_dialog_id),
+                exceptions=self.storage.io_exceptions,
+                stop_callback_coro=self.stop,
+            )
+
+        except RetryError:
+            logging.error("Can't restore dialog on pause due to Storage IO error")
+            return
+
     async def handle_start(self, event):
         try:
             logging.info("Handle start command respondent #{}".format(event.chat_id))
@@ -200,9 +231,15 @@ class TelegramService(ArchetypeService):
                 )
                 return
 
-            dialog = await self.restore_dialog(respondent_id, event)
+            cancelled = await self.cancel_pause(respondent_id)
 
-            if dialog is None:
+            if cancelled:
+                await self.send_message(respondent_id, const.PAUSE_CANCELLED)
+
+                await self.restore_dialog(
+                    respondent_id, event, repeat_last_question=True
+                )
+            else:
                 respondent = Respondent(
                     id=respondent_id,
                     messenger=self.type,
@@ -233,7 +270,9 @@ class TelegramService(ArchetypeService):
                 )
                 return
 
+            await self.close_dialog(dialog.respondent.id, is_complete=None)
             await dialog.pause()
+            await self.send_message(dialog.respondent.id, const.DIALOG_ON_PAUSE)
 
         except Exception:
             logging.exception("Catch exception in handle_pause:")
@@ -243,13 +282,13 @@ class TelegramService(ArchetypeService):
 
     async def handle_cancel(self, event):
         try:
-            respondent_id = str(event.chat_id)
+            dialog = await self.get_or_restore_dialog(event)
 
-            if respondent_id not in self.dialogs:
+            if dialog is None:
                 await self._client.send_message(event.chat, const.SESSION_DOESNT_EXIST)
                 return
 
-            await self.close_dialog(respondent_id, is_complete=False)
+            await self.close_dialog(dialog.respondent.id, is_complete=False)
 
             cancel_message = const.CANCEL.format(
                 start_command=self.settings.start_command
@@ -260,7 +299,9 @@ class TelegramService(ArchetypeService):
         finally:
             raise events.StopPropagation
 
-    async def send_message(self, user_id, message, keep_keyboard=False, *args, **kwargs):
+    async def send_message(
+        self, user_id, message, keep_keyboard=False, *args, **kwargs
+    ):
         if isinstance(message, dict):
             message = await self._client.send_message(int(user_id), **message)
         elif isinstance(message, str):
@@ -275,6 +316,9 @@ class TelegramService(ArchetypeService):
     def set_handlers(self):
         self._client.add_event_handler(
             self.handle_start, events.NewMessage(pattern=self.settings.start_command)
+        )
+        self._client.add_event_handler(
+            self.handle_pause, events.NewMessage(pattern=self.settings.pause_command)
         )
         self._client.add_event_handler(
             self.handle_cancel, events.NewMessage(pattern=self.settings.cancel_command)

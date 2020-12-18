@@ -1,8 +1,8 @@
 from sqlalchemy import select, text
-from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.dialects.postgresql import insert, dialect
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from sqlalchemy.ext.asyncio import create_async_engine
-from sqlalchemy.sql import func
+from sqlalchemy.sql import func, null
 
 from ..archetype import ArchetypeStorage
 from . import tables
@@ -67,23 +67,40 @@ class PostgreStorage(ArchetypeStorage):
 
             return result.inserted_primary_key[0]
 
-    async def get_last_dialog_id(self, respondent_id, respondent_messenger):
+    async def get_last_dialog_id(
+        self, respondent_id, respondent_messenger, on_pause=None
+    ):
+
+        if on_pause is None:
+            on_pause = null()
+
         async with self._engine.begin() as conn:
             query = text(
                 """
                 SELECT
-                    MAX(id)
-                FROM dialogs
+                    MAX(d.id)
+                FROM dialogs as d
+                LEFT OUTER JOIN dialogue_pauses as dp ON dp.dialog_id = d.id AND dp.active=True
                 WHERE
-                    respondent_id = :id
-                    AND respondent_messenger = :messenger
-                    AND finished_at is Null
+                    d.respondent_id = :id
+                    AND d.respondent_messenger = :messenger
+                    AND d.finished_at is Null
+                    AND dp.active is :on_pause 
             """
             )
 
-            result = await conn.execute(
-                query, {"id": respondent_id, "messenger": respondent_messenger.name}
+            stmt = query.bindparams(
+                **{
+                    "id": respondent_id,
+                    "messenger": respondent_messenger.name,
+                    "on_pause": on_pause,
+                }
             )
+
+            stmt_compiled = stmt.compile(
+                dialect=dialect(), compile_kwargs={"literal_binds": True}
+            )
+            result = await conn.execute(stmt_compiled)
             data = result.fetchone()
 
             if data:
@@ -115,3 +132,31 @@ class PostgreStorage(ArchetypeStorage):
                 .values(values)
                 .where(tables.dialogs.c.id == dialog.id)
             )
+
+    async def pause(self, dialog):
+        async with self._engine.begin() as conn:
+            try:
+                await conn.execute(
+                    tables.dialogue_pauses.insert().values(
+                        {
+                            "dialog_id": dialog.id,
+                        }
+                    )
+                )
+            except IndentationError:
+                return False
+
+            return True
+
+    async def cancel_pause(self, dialog_id) -> bool:
+        async with self._engine.begin() as conn:
+            values = {"finished_at": func.now(), "active": null()}
+
+            result = await conn.execute(
+                tables.dialogue_pauses.update()
+                .values(values)
+                .where(tables.dialogue_pauses.c.dialog_id == dialog_id)
+                .where(tables.dialogue_pauses.c.active == True)
+            )
+
+            return bool(result.rowcount)

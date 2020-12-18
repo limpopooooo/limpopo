@@ -5,6 +5,7 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     ForeignKeyConstraint,
+    UniqueConstraint,
     Index,
     Integer,
     MetaData,
@@ -46,6 +47,18 @@ dialogs = Table(
         ["respondent_id", "respondent_messenger"],
         ["respondents.id", "respondents.messenger"],
     ),
+)
+
+
+dialogue_pauses = Table(
+    "dialogue_pauses",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("dialog_id", Integer, ForeignKey(dialogs.c.id), nullable=False),
+    Column("created_at", DateTime(timezone=True), server_default=func.now()),
+    Column("finished_at", DateTime(timezone=True), nullable=True),
+    Column("active", Boolean, server_default=expression.true(), nullable=True),
+    UniqueConstraint('dialog_id', 'active', name='one_pause_active')
 )
 
 

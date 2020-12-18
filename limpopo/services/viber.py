@@ -133,7 +133,6 @@ class ViberService(ArchetypeService):
         self._server = Server(config=config)
 
         self._keyboard_data = None
-        self._tasks = {}
 
     def expand_tracking_data(self, message) -> None:
         tracking_data = int(time() * 10 ** 5)
@@ -149,24 +148,7 @@ class ViberService(ArchetypeService):
         message._keyboard = self._keyboard_data
 
     def _create_task(self, dialog):
-        task = asyncio.ensure_future(self.run_quiz(dialog))
-        self._tasks[dialog.respondent.id] = task
-
-        logging.info(
-            "Task dialog with user #{} was successfully creatted".format(
-                dialog.respondent.id
-            )
-        )
-
-    def _close_task(self, user_id):
-        task = self._tasks.pop(user_id, None)
-        if task:
-            task.cancel()
-            logging.info(
-                "Task dialog with user #{} was successfully cancelled".format(user_id)
-            )
-        else:
-            logging.warning("Task dialog with user #{} doesn't find".format(user_id))
+        asyncio.ensure_future(self.run_quiz(dialog))
 
     async def handle_http_request(self, request):
         body = await request.body()
@@ -275,8 +257,6 @@ class ViberService(ArchetypeService):
 
     async def handle_unsubscribed(self, user_id):
         await self.close_dialog(user_id, is_complete=False)
-
-        self._close_task(user_id)
 
     @staticmethod
     def user_to_dict(user) -> dict:

@@ -8,4 +8,7 @@ WRONG_ANSWER_FORMAT = "Некорректный формат ответа!"
 
 SESSION_DOESNT_EXIST = "У вас в данный момент нет ни одного активного диалога."
 
+DIALOG_ON_PAUSE = "Опрос поставлен на паузу"
+PAUSE_CANCELLED = "Диалог снят с паузы"
+
 LIMPOPO_AVATAR = "https://www.svgrepo.com/show/165367/ghost.svg"
