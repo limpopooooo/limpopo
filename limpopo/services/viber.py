@@ -168,7 +168,7 @@ class ViberService(ArchetypeService):
             "Received viber_request with event_type {}".format(viber_request.event_type)
         )
 
-        if viber_request.event_type == EventType.SUBSCRIBED:
+        if viber_request.event_type in (EventType.CONVERSATION_STARTED, EventType.SUBSCRIBED):
             return await self.handle_subscribed(viber_request.user)
         elif viber_request.event_type == EventType.UNSUBSCRIBED:
             return await self.handle_unsubscribed(viber_request.user_id)
@@ -302,7 +302,7 @@ class ViberService(ArchetypeService):
 
     def set_webhook(self, url):
         events = self._viber.set_webhook(
-            url, [EventType.MESSAGE, EventType.SUBSCRIBED, EventType.FAILED]
+            url, [EventType.MESSAGE, EventType.SUBSCRIBED, EventType.FAILED, EventType.CONVERSATION_STARTED]
         )
 
         logging.info(
