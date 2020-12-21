@@ -6,8 +6,10 @@ from dataclasses import dataclass
 from tenacity import RetryError
 from telethon import Button, TelegramClient, events
 from telethon.sessions.abstract import Session
+from telethon.tl.types import DocumentAttributeVideo
 
 from .. import const
+from ..video import Video
 from ..dto import Message, Messengers, Respondent
 from ..exceptions import SettingsError
 from ..helpers import with_retry
@@ -302,8 +304,18 @@ class TelegramService(ArchetypeService):
     async def send_message(
         self, user_id, message, keep_keyboard=False, *args, **kwargs
     ):
+        if isinstance(message, Video):
+            message = await self._client.send_file(
+                int(user_id),
+                message.path_to_file,
+                attributes=(DocumentAttributeVideo(0, 0, 0),),
+            )
+
+            return message.id
+
         if isinstance(message, dict):
             message = await self._client.send_message(int(user_id), **message)
+
         elif isinstance(message, str):
             message = {"message": message}
 

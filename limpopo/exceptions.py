@@ -6,6 +6,10 @@ class QuestionParameterWrongType(BaseLimpopoException):
     pass
 
 
+class VideoParameterWrongType(BaseLimpopoException):
+    pass
+
+
 class QuestionChoicesWrongType(BaseLimpopoException):
     pass
 

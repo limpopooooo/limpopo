@@ -15,6 +15,7 @@ from viberbot.api.event_type import EventType
 from viberbot.api.messages import TextMessage
 
 from .. import const
+from ..video import Video
 from ..dto import Message, Messengers, Respondent
 from ..exceptions import SettingsError
 from ..helpers import with_retry
@@ -134,8 +135,12 @@ class ViberService(ArchetypeService):
 
         self._keyboard_data = None
 
+    @staticmethod
+    def gen_tracking_data():
+        return int(time() * 10 ** 5)
+
     def expand_tracking_data(self, message) -> None:
-        tracking_data = int(time() * 10 ** 5)
+        tracking_data = self.gen_tracking_data()
         message._tracking_data = tracking_data
 
     def expand_keyboard(self, message) -> None:
@@ -168,12 +173,17 @@ class ViberService(ArchetypeService):
             "Received viber_request with event_type {}".format(viber_request.event_type)
         )
 
-        if viber_request.event_type in (EventType.CONVERSATION_STARTED, EventType.SUBSCRIBED):
+        if viber_request.event_type in (
+            EventType.CONVERSATION_STARTED,
+            EventType.SUBSCRIBED,
+        ):
             return await self.handle_subscribed(viber_request.user)
         elif viber_request.event_type == EventType.UNSUBSCRIBED:
             return await self.handle_unsubscribed(viber_request.user_id)
         elif viber_request.event_type == EventType.MESSAGE:
-            return await self.handle_new_message(viber_request.sender, viber_request.message)
+            return await self.handle_new_message(
+                viber_request.sender, viber_request.message
+            )
 
     async def handle_new_message(self, user, message):
         message_text = message.text.strip()
@@ -204,7 +214,9 @@ class ViberService(ArchetypeService):
         dialog = await self.restore_dialog(user)
 
         if dialog is None and self.settings.reply_without_dialogue:
-            foreword_message = const.FOREWORD.format(start_command=self.settings.start_command)
+            foreword_message = const.FOREWORD.format(
+                start_command=self.settings.start_command
+            )
             await self.send_message(user.id, foreword_message)
         else:
             return dialog
@@ -222,9 +234,7 @@ class ViberService(ArchetypeService):
             )
 
             if last_dialog_id is None:
-                logging.info(
-                    "Respondent #{} doesn't have any dialogs".format(user.id)
-                )
+                logging.info("Respondent #{} doesn't have any dialogs".format(user.id))
                 return
 
             messages = await with_retry(
@@ -285,6 +295,12 @@ class ViberService(ArchetypeService):
     async def send_message(
         self, user_id, message, keep_keyboard=False, *args, **kwargs
     ):
+        if isinstance(message, Video):
+            if message.url is not None:
+                message = TextMessage(text=message.url)
+            else:
+                return self.gen_tracking_data()
+
         if not isinstance(message, TextMessage):
             message = TextMessage(text=message)
 
@@ -302,7 +318,13 @@ class ViberService(ArchetypeService):
 
     def set_webhook(self, url):
         events = self._viber.set_webhook(
-            url, [EventType.MESSAGE, EventType.SUBSCRIBED, EventType.FAILED, EventType.CONVERSATION_STARTED]
+            url,
+            [
+                EventType.MESSAGE,
+                EventType.SUBSCRIBED,
+                EventType.FAILED,
+                EventType.CONVERSATION_STARTED,
+            ],
         )
 
         logging.info(
