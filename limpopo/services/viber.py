@@ -16,6 +16,7 @@ from viberbot.api.messages import TextMessage
 
 from .. import const
 from ..video import Video
+from ..markdown_message import MarkdownMessage
 from ..dto import Message, Messengers, Respondent
 from ..exceptions import SettingsError
 from ..helpers import with_retry
@@ -139,6 +140,17 @@ class ViberService(ArchetypeService):
     def gen_tracking_data():
         return int(time() * 10 ** 5)
 
+    @staticmethod
+    def user_to_dict(user) -> dict:
+        return {
+            "name": user.name,
+            "avatar": user.avatar,
+            "id": user.id,
+            "country": user.country,
+            "language": user.language,
+            "api_version": user.api_version,
+        }
+
     def expand_tracking_data(self, message) -> None:
         tracking_data = self.gen_tracking_data()
         message._tracking_data = tracking_data
@@ -173,10 +185,9 @@ class ViberService(ArchetypeService):
             "Received viber_request with event_type {}".format(viber_request.event_type)
         )
 
-        if viber_request.event_type in (
-            EventType.CONVERSATION_STARTED,
-            EventType.SUBSCRIBED,
-        ):
+        if viber_request.event_type == EventType.CONVERSATION_STARTED:
+            return await self.handle_conversation_started(viber_request.user)
+        elif viber_request.event_type == EventType.SUBSCRIBED:
             return await self.handle_subscribed(viber_request.user)
         elif viber_request.event_type == EventType.UNSUBSCRIBED:
             return await self.handle_unsubscribed(viber_request.user_id)
@@ -184,6 +195,23 @@ class ViberService(ArchetypeService):
             return await self.handle_new_message(
                 viber_request.sender, viber_request.message
             )
+
+    async def handle_conversation_started(self, user):
+        message = TextMessage(**const.VIBER_INTO_MESSAGE)
+        self._viber.send_messages(user.id, message)
+
+    async def handle_subscribed(self, user):
+        full_userdata = self.user_to_dict(user)
+
+        respondent = Respondent(
+            id=user.id,
+            messenger=self.type,
+            username=user.name,
+            extra_data=full_userdata,
+        )
+
+        dialog = await self.create_dialog(respondent)
+        self._create_task(dialog)
 
     async def handle_new_message(self, user, message):
         message_text = message.text.strip()
@@ -206,6 +234,34 @@ class ViberService(ArchetypeService):
             identifier = int(message.tracking_data) + 1
             message = Message(identifier, message_text)
             await dialog.handle_message(message)
+
+    async def handle_unsubscribed(self, user_id):
+        await self.close_dialog(user_id, is_complete=False)
+
+    async def send_message(
+        self, user_id, message, keep_keyboard=False, *args, **kwargs
+    ):
+        if isinstance(message, MarkdownMessage):
+            message = TextMessage(text=message.plain_text)
+        elif isinstance(message, Video):
+            if message.url is not None:
+                message = TextMessage(text=message.url)
+            else:
+                return self.gen_tracking_data()
+        elif isinstance(message, str):
+            message = TextMessage(text=message)
+
+        if message._keyboard:
+            self._keyboard_data = message._keyboard
+
+        self.expand_tracking_data(message)
+
+        if keep_keyboard:
+            self.expand_keyboard(message)
+
+        self._viber.send_messages(user_id, message)
+
+        return message.tracking_data
 
     async def get_or_restore_dialog(self, user):
         if user.id in self.dialogs:
@@ -264,57 +320,6 @@ class ViberService(ArchetypeService):
         self._create_task(dialog)
 
         return dialog
-
-    async def handle_unsubscribed(self, user_id):
-        await self.close_dialog(user_id, is_complete=False)
-
-    @staticmethod
-    def user_to_dict(user) -> dict:
-        return {
-            "name": user.name,
-            "avatar": user.avatar,
-            "id": user.id,
-            "country": user.country,
-            "language": user.language,
-            "api_version": user.api_version,
-        }
-
-    async def handle_subscribed(self, user):
-        full_userdata = self.user_to_dict(user)
-
-        respondent = Respondent(
-            id=user.id,
-            messenger=self.type,
-            username=user.name,
-            extra_data=full_userdata,
-        )
-
-        dialog = await self.create_dialog(respondent)
-        self._create_task(dialog)
-
-    async def send_message(
-        self, user_id, message, keep_keyboard=False, *args, **kwargs
-    ):
-        if isinstance(message, Video):
-            if message.url is not None:
-                message = TextMessage(text=message.url)
-            else:
-                return self.gen_tracking_data()
-
-        if not isinstance(message, TextMessage):
-            message = TextMessage(text=message)
-
-        if message._keyboard:
-            self._keyboard_data = message._keyboard
-
-        self.expand_tracking_data(message)
-
-        if keep_keyboard:
-            self.expand_keyboard(message)
-
-        self._viber.send_messages(user_id, message)
-
-        return message.tracking_data
 
     def set_webhook(self, url):
         events = self._viber.set_webhook(

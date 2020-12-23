@@ -10,6 +10,7 @@ from telethon.tl.types import DocumentAttributeVideo
 
 from .. import const
 from ..video import Video
+from ..markdown_message import MarkdownMessage
 from ..dto import Message, Messengers, Respondent
 from ..exceptions import SettingsError
 from ..helpers import with_retry
@@ -311,9 +312,19 @@ class TelegramService(ArchetypeService):
     async def send_message(
         self, user_id, message, keep_keyboard=False, *args, **kwargs
     ):
-        if isinstance(message, Video):
+        if isinstance(message, MarkdownMessage):
+            message = {"message": message.text}
+
+            if not keep_keyboard:
+                message["buttons"] = Button.clear()
+
+            message = await self._client.send_message(int(user_id), **message)
+
+        elif isinstance(message, Video):
             if message.width and message.height:
-                attrs = DocumentAttributeVideo(0, message.width, message.height, supports_streaming=True)
+                attrs = DocumentAttributeVideo(
+                    0, message.width, message.height, supports_streaming=True
+                )
             else:
                 attrs = DocumentAttributeVideo(0, 0, 0, supports_streaming=True)
 
@@ -323,9 +334,7 @@ class TelegramService(ArchetypeService):
                 int(user_id), uploaded_file, attributes=(attrs,)
             )
 
-            return message.id
-
-        if isinstance(message, dict):
+        elif isinstance(message, dict):
             message = await self._client.send_message(int(user_id), **message)
 
         elif isinstance(message, str):
@@ -335,6 +344,7 @@ class TelegramService(ArchetypeService):
                 message["buttons"] = Button.clear()
 
             message = await self._client.send_message(int(user_id), **message)
+
         return message.id
 
     def set_handlers(self):

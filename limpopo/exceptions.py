@@ -2,15 +2,23 @@ class BaseLimpopoException(Exception):
     pass
 
 
-class QuestionParameterWrongType(BaseLimpopoException):
+class ParameterError(BaseLimpopoException):
     pass
 
 
-class VideoParameterWrongType(BaseLimpopoException):
+class QuestionParameterWrongType(ParameterError):
     pass
 
 
-class QuestionChoicesWrongType(BaseLimpopoException):
+class VideoParameterWrongType(ParameterError):
+    pass
+
+
+class MarkdownMessageParameterWrongType(ParameterError):
+    pass
+
+
+class QuestionChoicesWrongType(ParameterError):
     pass
 
 
