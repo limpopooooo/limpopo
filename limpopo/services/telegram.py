@@ -103,6 +103,13 @@ class TelegramService(ArchetypeService):
         self._client = TelegramClient(
             settings.session, settings.api_id, settings.api_hash, proxy=None
         )
+        self._uploaded_file = None
+
+    async def upload_file(self, video_file):
+        if self._uploaded_file is None:
+            self._uploaded_file = await self._client.upload_file(video_file)
+
+        return self._uploaded_file
 
     async def restore_dialog(
         self, respondent_id, event, repeat_last_question=False
@@ -310,10 +317,11 @@ class TelegramService(ArchetypeService):
             else:
                 attrs = DocumentAttributeVideo(0, 0, 0, supports_streaming=True)
 
-            with open(message.path_to_file, 'rb') as video_file:
-                message = await self._client.send_file(
-                    int(user_id), video_file, attributes=(attrs,)
-                )
+            uploaded_file = await self.upload_file(message.path_to_file)
+
+            message = await self._client.send_file(
+                int(user_id), uploaded_file, attributes=(attrs,)
+            )
 
             return message.id
 
