@@ -99,6 +99,7 @@ class ArchetypeService(metaclass=ABCMeta):
         dialog = self.dialogs.pop(respondent_id, None)
         if dialog:
             if dialog.task:
+                logging.info("Dialog #{} task cancelling".format(dialog.id))
                 dialog.task.cancel()
 
             if is_complete is not None:
@@ -210,7 +211,7 @@ class ArchetypeDialog(metaclass=ABCMeta):
 
         if not self._restore_mode or self._repeat_last_question:
             message_data = self.prepare_question(question)
-            self.last_question_id = await self.tell(message_data)
+            self.last_question_id = await self.tell(message_data, force=self._repeat_last_question)
 
         self._restore_mode = False
 
@@ -245,8 +246,8 @@ class ArchetypeDialog(metaclass=ABCMeta):
                 await self.tell(const.WRONG_ANSWER_FORMAT, keep_keyboard=True)
                 self.answer.clear()
 
-    async def tell(self, *args, **kwargs) -> int:
-        if self._restore_mode:
+    async def tell(self, *args, force=False, **kwargs) -> int:
+        if self._restore_mode and not force:
             return 0
         return await self.service.send_message(self.respondent.id, *args, **kwargs)
 

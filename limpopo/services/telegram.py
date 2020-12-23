@@ -233,7 +233,10 @@ class TelegramService(ArchetypeService):
             logging.info("Handle start command respondent #{}".format(event.chat_id))
 
             respondent_id = str(event.chat_id)
-            if respondent_id in self.dialogs:
+
+            dialog = await self.get_or_restore_dialog(event)
+
+            if dialog:
                 logging.info(
                     "Respondent #{} try to start already started dialog".format(
                         respondent_id
