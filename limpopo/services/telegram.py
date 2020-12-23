@@ -305,11 +305,15 @@ class TelegramService(ArchetypeService):
         self, user_id, message, keep_keyboard=False, *args, **kwargs
     ):
         if isinstance(message, Video):
-            message = await self._client.send_file(
-                int(user_id),
-                message.path_to_file,
-                attributes=(DocumentAttributeVideo(0, 0, 0),),
-            )
+            if message.width and message.height:
+                attrs = DocumentAttributeVideo(0, message.width, message.height, supports_streaming=True)
+            else:
+                attrs = DocumentAttributeVideo(0, 0, 0, supports_streaming=True)
+
+            with open(message.path_to_file, 'rb') as video_file:
+                message = await self._client.send_file(
+                    int(user_id), video_file, attributes=(attrs,)
+                )
 
             return message.id
 

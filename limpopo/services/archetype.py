@@ -119,8 +119,9 @@ class ArchetypeService(metaclass=ABCMeta):
             answer_timeout=self.settings.answer_timeout,
         )
 
-        if identifier and not repeat_last_question:
+        if identifier:
             dialog.set_restore_mode()
+            dialog.set_repeat_last_question(repeat_last_question)
         elif identifier is None:
             identifier = await dialog.on_start()
 
@@ -177,9 +178,13 @@ class ArchetypeDialog(metaclass=ABCMeta):
 
         self._queue_answers = Queue(10)
         self._restore_mode = False
+        self._repeat_last_question = False
 
     def set_restore_mode(self):
         self._restore_mode = True
+
+    def set_repeat_last_question(self, value):
+        self._repeat_last_question = value
 
     def set_identifier(self, identifier: str):
         self.id = identifier
@@ -203,7 +208,7 @@ class ArchetypeDialog(metaclass=ABCMeta):
             self.answer.set(answer_text)
             return copy(self.answer)
 
-        if not self._restore_mode:
+        if not self._restore_mode or self._repeat_last_question:
             message_data = self.prepare_question(question)
             self.last_question_id = await self.tell(message_data)
 
@@ -241,6 +246,8 @@ class ArchetypeDialog(metaclass=ABCMeta):
                 self.answer.clear()
 
     async def tell(self, *args, **kwargs) -> int:
+        if self._restore_mode:
+            return 0
         return await self.service.send_message(self.respondent.id, *args, **kwargs)
 
     async def handle_message(self, message: Message):

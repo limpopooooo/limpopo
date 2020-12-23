@@ -8,7 +8,7 @@ from .exceptions import VideoParameterWrongType
 
 
 class Video:
-    def __init__(self, path_to_file: str, url: typing.Optional[str] = None):
+    def __init__(self, path_to_file: str, width=None, height=None, url: typing.Optional[str] = None):
         if not isinstance(path_to_file, str):
             raise VideoParameterWrongType(
                 "Field `path_to_file`: is expected type `str`, received: {}".format(
@@ -46,6 +46,8 @@ class Video:
 
         self.path_to_file = path_to_file
         self.url = url
+        self.width = width
+        self.height = height
 
     @staticmethod
     def _resolve_url(parse_result) -> bool:
