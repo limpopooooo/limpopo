@@ -172,7 +172,7 @@ class TelegramService(ArchetypeService):
             foreword_message = const.FOREWORD.format(
                 start_command=self.settings.start_command
             )
-            await self._client.send_message(event.chat_id, foreword_message)
+            await self.send_message(event.chat_id, foreword_message)
         else:
             return dialog
 
@@ -298,7 +298,7 @@ class TelegramService(ArchetypeService):
             dialog = await self.get_or_restore_dialog(event)
 
             if dialog is None:
-                await self._client.send_message(event.chat, const.SESSION_DOESNT_EXIST)
+                await self.send_message(event.chat_id, const.SESSION_DOESNT_EXIST)
                 return
 
             await self.close_dialog(dialog.respondent.id, is_complete=False)
@@ -306,7 +306,7 @@ class TelegramService(ArchetypeService):
             cancel_message = const.CANCEL.format(
                 start_command=self.settings.start_command
             )
-            await self._client.send_message(event.chat, cancel_message)
+            await self.send_message(event.chat_id, cancel_message)
         except Exception:
             logging.exception("Catch exception in handle_cancel:")
         finally:
@@ -315,13 +315,14 @@ class TelegramService(ArchetypeService):
     async def send_message(
         self, user_id, message, keep_keyboard=False, *args, **kwargs
     ):
+        tg_message = {}
+
+        if not keep_keyboard:
+            tg_message["buttons"] = Button.clear()
+
         if isinstance(message, MarkdownMessage):
-            message = {"message": message.text}
-
-            if not keep_keyboard:
-                message["buttons"] = Button.clear()
-
-            message = await self._client.send_message(int(user_id), **message)
+            tg_message["message"] = message.text
+            message = await self._client.send_message(int(user_id), **tg_message)
 
         elif isinstance(message, Video):
             if message.width and message.height:
@@ -338,15 +339,12 @@ class TelegramService(ArchetypeService):
             )
 
         elif isinstance(message, dict):
-            message = await self._client.send_message(int(user_id), **message)
+            tg_message.update(message)
+            message = await self._client.send_message(int(user_id), **tg_message)
 
         elif isinstance(message, str):
-            message = {"message": message}
-
-            if not keep_keyboard:
-                message["buttons"] = Button.clear()
-
-            message = await self._client.send_message(int(user_id), **message)
+            tg_message["message"] = message
+            message = await self._client.send_message(int(user_id), **tg_message)
 
         return message.id
 
