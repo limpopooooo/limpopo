@@ -26,7 +26,6 @@ class DefaultSettings(EmptySettings):
     start_command: str = '/start'
     cancel_command: str = '/cancel'
     pause_command: str = '/pause'
-    renew_command: str = '/renew'
 
     def __post_init__(self):
         super().__post_init__()
@@ -54,11 +53,6 @@ class DefaultSettings(EmptySettings):
         if not isinstance(self.pause_command, str):
             raise SettingsError(
                 "Settings field `pause_command` must be of the str type"
-            )
-
-        if not isinstance(self.renew_command, str):
-            raise SettingsError(
-                "Settings field `renew_command` must be of the str type"
             )
 
 

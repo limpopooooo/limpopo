@@ -63,7 +63,7 @@ class TelegramDialog(ArchetypeDialog):
                 if question.inline:
                     buttons.append(Button.inline(text, index))
                 else:
-                    buttons.append(Button.text(text, single_use=True))
+                    buttons.append(Button.text(text, single_use=True, resize=True))
 
             if len(buttons) > question.column_count:
                 rows_buttons = list(zip(*(question.column_count * [iter(buttons)])))
