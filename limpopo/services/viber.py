@@ -7,19 +7,19 @@ from time import time
 from starlette.applications import Starlette
 from starlette.responses import Response
 from starlette.routing import Route
-from uvicorn import Config, Server
 from tenacity import RetryError
+from uvicorn import Config, Server
 from viberbot import Api
 from viberbot.api.bot_configuration import BotConfiguration
 from viberbot.api.event_type import EventType
 from viberbot.api.messages import TextMessage
 
 from .. import const
-from ..video import Video
-from ..markdown_message import MarkdownMessage
 from ..dto import Message, Messengers, Respondent
 from ..exceptions import SettingsError
 from ..helpers import with_retry
+from ..markdown_message import MarkdownMessage
+from ..video import Video
 from .archetype import ArchetypeDialog, ArchetypeService, DefaultSettings, EmptySettings
 
 

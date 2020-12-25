@@ -5,12 +5,12 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     ForeignKeyConstraint,
-    UniqueConstraint,
     Index,
     Integer,
     MetaData,
     String,
     Table,
+    UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql import expression, func

@@ -3,19 +3,19 @@ import logging
 import typing
 from dataclasses import dataclass
 
-from tenacity import RetryError
 from telethon import Button, TelegramClient, events
 from telethon.sessions.abstract import Session
 from telethon.tl.types import DocumentAttributeVideo
+from tenacity import RetryError
 
 from .. import const
-from ..video import Video
-from ..markdown_message import MarkdownMessage
 from ..dto import Message, Messengers, Respondent
 from ..exceptions import SettingsError
 from ..helpers import with_retry
+from ..markdown_message import MarkdownMessage
 from ..storages.archetype import ArchetypeStorage
-from .archetype import ArchetypeDialog, ArchetypeService, EmptySettings, DefaultSettings
+from ..video import Video
+from .archetype import ArchetypeDialog, ArchetypeService, DefaultSettings, EmptySettings
 
 
 @dataclass

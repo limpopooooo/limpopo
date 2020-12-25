@@ -8,7 +8,6 @@ from .exceptions import (
 )
 from .helpers import markdown_to_plain_text
 
-
 ANY = typing.TypeVar('ANY')
 
 

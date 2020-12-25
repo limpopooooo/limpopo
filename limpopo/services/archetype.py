@@ -1,9 +1,9 @@
-from dataclasses import dataclass
 import logging
 import typing
 from abc import ABCMeta, abstractmethod
-from asyncio import CancelledError, Queue, TimeoutError, wait_for, create_task
+from asyncio import CancelledError, Queue, TimeoutError, create_task, wait_for
 from copy import copy
+from dataclasses import dataclass
 
 from tenacity import RetryError
 
