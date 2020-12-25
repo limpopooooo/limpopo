@@ -1,6 +1,6 @@
 from sqlalchemy import select, text
 from sqlalchemy.dialects.postgresql import insert, dialect
-from sqlalchemy.exc import SQLAlchemyError, IntegrityError
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.sql import func, null
 
