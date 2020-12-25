@@ -9,7 +9,7 @@ class ArchetypeStorage(metaclass=ABCMeta):
     @abstractmethod
     async def create_dialog(self, dialog):
         pass
-    
+
     @property
     @abstractmethod
     async def io_exceptions(self):

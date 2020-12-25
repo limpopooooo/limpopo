@@ -23,9 +23,9 @@ class EmptySettings:
 class DefaultSettings(EmptySettings):
     answer_timeout: int = const.ANSWER_TIMEOUT
     reply_without_dialogue: bool = True
-    start_command: str = '/start'
-    cancel_command: str = '/cancel'
-    pause_command: str = '/pause'
+    start_command: str = "/start"
+    cancel_command: str = "/cancel"
+    pause_command: str = "/pause"
 
     def __post_init__(self):
         super().__post_init__()
@@ -70,7 +70,7 @@ class ArchetypeService(metaclass=ABCMeta):
         self.cls_dialog = cls_dialog
 
     async def run_quiz(self, dialog):
-        logging.info('Task for dialog #{} started'.format(dialog.id))
+        logging.info("Task for dialog #{} started".format(dialog.id))
 
         try:
             dialog.run_task(self.quiz)
@@ -84,8 +84,7 @@ class ArchetypeService(metaclass=ABCMeta):
         except Exception:
             logging.exception("Catch exception in run_quiz:")
         finally:
-            logging.info('Task for dialog #{} stopped'.format(dialog.id))
-
+            logging.info("Task for dialog #{} stopped".format(dialog.id))
 
     async def close_dialog(
         self, respondent_id: str, is_complete: typing.Optional[bool]
@@ -105,7 +104,11 @@ class ArchetypeService(metaclass=ABCMeta):
             )
 
     async def create_dialog(
-        self, respondent: Respondent, identifier=None, prepared_questions=None, repeat_last_question=False
+        self,
+        respondent: Respondent,
+        identifier=None,
+        prepared_questions=None,
+        repeat_last_question=False,
     ):
         dialog = self.cls_dialog(
             self,
@@ -205,7 +208,9 @@ class ArchetypeDialog(metaclass=ABCMeta):
 
         if not self._restore_mode or self._repeat_last_question:
             message_data = self.prepare_question(question)
-            self.last_question_id = await self.tell(message_data, force=self._repeat_last_question)
+            self.last_question_id = await self.tell(
+                message_data, force=self._repeat_last_question
+            )
 
         self._restore_mode = False
 
@@ -252,9 +257,9 @@ class ArchetypeDialog(metaclass=ABCMeta):
         done = await self.service.storage.pause(self)
 
         if done:
-            logging.info('Dialog #{} on pause'.format(self.id))
+            logging.info("Dialog #{} on pause".format(self.id))
         else:
-            logging.warning('Dialog #{} already on pause'.format(self.id))
+            logging.warning("Dialog #{} already on pause".format(self.id))
 
     async def on_start(self):
         return await with_retry(

@@ -85,7 +85,7 @@ class PostgreStorage(ArchetypeStorage):
                     d.respondent_id = :id
                     AND d.respondent_messenger = :messenger
                     AND d.finished_at is Null
-                    AND dp.active is :on_pause 
+                    AND dp.active is :on_pause;
             """
             )
 
@@ -156,7 +156,7 @@ class PostgreStorage(ArchetypeStorage):
                 tables.dialogue_pauses.update()
                 .values(values)
                 .where(tables.dialogue_pauses.c.dialog_id == dialog_id)
-                .where(tables.dialogue_pauses.c.active == True)
+                .where(tables.dialogue_pauses.c.active.is_(True))
             )
 
             return bool(result.rowcount)
