@@ -12,7 +12,7 @@ from uvicorn import Config, Server
 from viberbot import Api
 from viberbot.api.bot_configuration import BotConfiguration
 from viberbot.api.event_type import EventType
-from viberbot.api.messages import TextMessage
+from viberbot.api.messages import TextMessage, URLMessage
 
 from .. import const
 from ..dto import Message, Messengers, Respondent
@@ -245,7 +245,7 @@ class ViberService(ArchetypeService):
             message = TextMessage(text=message.plain_text)
         elif isinstance(message, Video):
             if message.url is not None:
-                message = TextMessage(text=message.url)
+                message = URLMessage(media=message.url)
             else:
                 return self.gen_tracking_data()
         elif isinstance(message, str):

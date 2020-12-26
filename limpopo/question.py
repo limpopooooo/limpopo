@@ -21,6 +21,7 @@ class Question:
         strict_choose: bool = True,
         column_count: int = 2,
         inline: bool = True,
+        single_use: bool = True,
     ):
         if not isinstance(topic, str):
             raise QuestionParameterWrongType(
@@ -57,6 +58,7 @@ class Question:
         self.strict_choose = strict_choose
         self.column_count = column_count
         self.inline = inline
+        self.single_use = single_use
 
     @property
     def options(self):
