@@ -99,7 +99,7 @@ class ArchetypeService(metaclass=ABCMeta):
                 await dialog.on_close(is_complete)
                 logging.info("Dialog #{} was closed".format(dialog.id))
         else:
-            logging.warning(
+            logging.info(
                 "Dialog with respondent #{} doesn't found".format(respondent_id)
             )
 
