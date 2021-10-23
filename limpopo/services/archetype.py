@@ -109,12 +109,14 @@ class ArchetypeService(metaclass=ABCMeta):
         respondent: Respondent,
         identifier=None,
         prepared_questions=None,
+        called_functions=None,
         repeat_last_question=False,
     ):
         dialog = self.cls_dialog(
             self,
             respondent,
             prepared_questions=prepared_questions,
+            called_functions=called_functions,
             answer_timeout=self.settings.answer_timeout,
         )
 

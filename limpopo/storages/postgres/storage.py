@@ -126,6 +126,18 @@ class PostgreStorage(ArchetypeStorage):
 
             return result.fetchall()
 
+    async def get_called_functions_from_dialog(self, dialog_id: int):
+        async with self._engine.begin() as conn:
+            result = await conn.execute(
+                select(
+                    [tables.called_functions.c.hash]
+                )
+                .where(tables.called_functions.c.dialog_id == dialog_id)
+                .order_by(tables.called_functions.c.created_at)
+            )
+
+            return result.fetchall()
+
     async def close_dialog(self, dialog, is_complete):
         values = {"finished_at": func.now()}
 
