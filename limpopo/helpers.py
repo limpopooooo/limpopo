@@ -1,3 +1,4 @@
+import typing
 from io import StringIO
 
 from markdown import Markdown
@@ -31,7 +32,9 @@ def markdown_to_plain_text(markdown_text):
     return converter.convert(markdown_text)
 
 
-async def with_retry(coro, num_attempts=5, exceptions=Exception, stop_callback_coro=None):
+async def with_retry(
+    coro, num_attempts=5, exceptions=Exception, stop_callback_coro=None
+):
     try:
         async for attempt in AsyncRetrying(
             wait=wait_exponential(min=1, max=60),
@@ -44,3 +47,8 @@ async def with_retry(coro, num_attempts=5, exceptions=Exception, stop_callback_c
         if stop_callback_coro:
             await stop_callback_coro()
         raise
+
+
+def calculate_functions_hash(func: typing.Callable) -> int:
+    code = func.__code__
+    return hash((code.co_name, code.co_argcount))

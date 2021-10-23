@@ -1,5 +1,6 @@
 from sqlalchemy import (
     Boolean,
+    BigInteger,
     Column,
     DateTime,
     Enum,
@@ -61,6 +62,12 @@ dialogue_pauses = Table(
     UniqueConstraint('dialog_id', 'active', name='one_pause_active')
 )
 
+called_functions = Table(
+    "called_functions",
+    metadata,
+    Column("hash", BigInteger, primary_key=True),
+    Column("dialog_id", Integer, ForeignKey(dialogs.c.id), primary_key=True),
+)
 
 dialogue_steps = Table(
     "dialogue_steps",

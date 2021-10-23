@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import typing
 from abc import ABCMeta, abstractmethod
@@ -10,7 +11,7 @@ from tenacity import RetryError
 from .. import const
 from ..dto import Answer, Message, Respondent
 from ..exceptions import DialogStopped, QuestionWrongAnswer, SettingsError
-from ..helpers import with_retry
+from ..helpers import calculate_functions_hash, with_retry
 from ..question import Question
 
 
@@ -160,6 +161,7 @@ class ArchetypeDialog(metaclass=ABCMeta):
         respondent: Respondent,
         answer_timeout: int = const.ANSWER_TIMEOUT,
         prepared_questions=None,
+        called_functions=None,
         *args,
         **kwargs,
     ):
@@ -172,6 +174,7 @@ class ArchetypeDialog(metaclass=ABCMeta):
         self.last_question_id = 0
         self.answer = Answer()
         self.prepared_questions = prepared_questions or {}
+        self.called_functions = called_functions or set()
         self.answer_timeout = answer_timeout
 
         self._queue_answers = Queue(10)
@@ -249,6 +252,27 @@ class ArchetypeDialog(metaclass=ABCMeta):
         if self._restore_mode and not force:
             return 0
         return await self.service.send_message(self.respondent.id, *args, **kwargs)
+
+    async def call_once(self, func: typing.Callable, *args, **kwargs) -> typing.Any:
+        funcs_hash = calculate_functions_hash(func)
+
+        if funcs_hash not in self.called_functions:
+            try:
+                await with_retry(
+                    lambda: self.service.storage.save_function_call(self, funcs_hash),
+                    exceptions=self.service.storage.io_exceptions,
+                    stop_callback_coro=self.service.stop,
+                )
+            except RetryError:
+                logging.error(
+                    "Dialog #{} stopped due to Storage IO error".format(self.id)
+                )
+                raise DialogStopped(self.id)
+
+            if asyncio.iscoroutinefunction(func):
+                return await func(*args, **kwargs)
+            else:
+                return func(*args, **kwargs)
 
     async def handle_message(self, message: Message):
         await self._queue_answers.put(message)

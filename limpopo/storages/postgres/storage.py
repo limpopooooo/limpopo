@@ -26,6 +26,14 @@ class PostgreStorage(ArchetypeStorage):
                 )
             )
 
+    async def save_function_call(self, dialog, funcs_hash: int):
+        async with self._engine.begin() as conn:
+            await conn.execute(
+                tables.called_functions.insert().values(
+                    {"hash": funcs_hash, "dialog_id": dialog.id}
+                )
+            )
+
     async def create_respondent_if_not_exists(self, respondent, conn=None):
         values = {
             "id": respondent.id,
