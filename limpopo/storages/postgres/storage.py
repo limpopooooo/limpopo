@@ -26,6 +26,14 @@ class PostgreStorage(ArchetypeStorage):
                 )
             )
 
+    async def save_function_call(self, dialog, funcs_hash: int):
+        async with self._engine.begin() as conn:
+            await conn.execute(
+                tables.called_functions.insert().values(
+                    {"hash": funcs_hash, "dialog_id": dialog.id}
+                )
+            )
+
     async def create_respondent_if_not_exists(self, respondent, conn=None):
         values = {
             "id": respondent.id,
@@ -114,6 +122,18 @@ class PostgreStorage(ArchetypeStorage):
                 )
                 .where(tables.dialogue_steps.c.dialog_id == dialog_id)
                 .order_by(tables.dialogue_steps.c.created_at)
+            )
+
+            return result.fetchall()
+
+    async def get_called_functions_from_dialog(self, dialog_id: int):
+        async with self._engine.begin() as conn:
+            result = await conn.execute(
+                select(
+                    [tables.called_functions.c.hash]
+                )
+                .where(tables.called_functions.c.dialog_id == dialog_id)
+                .order_by(tables.called_functions.c.created_at)
             )
 
             return result.fetchall()

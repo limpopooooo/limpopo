@@ -7,6 +7,10 @@ class ArchetypeStorage(metaclass=ABCMeta):
         pass
 
     @abstractmethod
+    async def save_function_call(self, dialog, funcs_hash: int):
+        pass
+
+    @abstractmethod
     async def create_dialog(self, dialog):
         pass
 

@@ -136,6 +136,13 @@ class TelegramService(ArchetypeService):
                 exceptions=self.storage.io_exceptions,
                 stop_callback_coro=self.stop,
             )
+
+            called_functions = await with_retry(
+                lambda: self.storage.get_called_functions_from_dialog(last_dialog_id),
+                exceptions=self.storage.io_exceptions,
+                stop_callback_coro=self.stop,
+            )
+
         except RetryError:
             logging.error("Can't restore dialog due to Storage IO error")
             return
@@ -154,6 +161,7 @@ class TelegramService(ArchetypeService):
             respondent,
             identifier=last_dialog_id,
             prepared_questions=prepared_questions,
+            called_functions=set(called_functions),
             repeat_last_question=repeat_last_question,
         )
 
