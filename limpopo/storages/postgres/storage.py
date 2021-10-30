@@ -2,7 +2,7 @@ from sqlalchemy import select, text
 from sqlalchemy.dialects.postgresql import dialect, insert
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import create_async_engine
-from sqlalchemy.sql import func, null
+from sqlalchemy.sql import func
 
 from ..archetype import ArchetypeStorage
 from . import tables
@@ -79,9 +79,6 @@ class PostgreStorage(ArchetypeStorage):
         self, respondent_id, respondent_messenger, on_pause=None
     ):
 
-        if on_pause is None:
-            on_pause = null()
-
         async with self._engine.begin() as conn:
             query = text(
                 """
@@ -104,6 +101,7 @@ class PostgreStorage(ArchetypeStorage):
                     "on_pause": on_pause,
                 }
             )
+
 
             stmt_compiled = stmt.compile(
                 dialect=dialect(), compile_kwargs={"literal_binds": True}
@@ -130,13 +128,13 @@ class PostgreStorage(ArchetypeStorage):
         async with self._engine.begin() as conn:
             result = await conn.execute(
                 select(
-                    [tables.called_functions.c.hash]
+                    tables.called_functions.c.hash
                 )
                 .where(tables.called_functions.c.dialog_id == dialog_id)
                 .order_by(tables.called_functions.c.created_at)
             )
 
-            return result.fetchall()
+            return [el[0] for el in result.fetchall()]
 
     async def close_dialog(self, dialog, is_complete):
         values = {"finished_at": func.now()}
@@ -170,7 +168,7 @@ class PostgreStorage(ArchetypeStorage):
 
     async def cancel_pause(self, dialog_id) -> bool:
         async with self._engine.begin() as conn:
-            values = {"finished_at": func.now(), "active": null()}
+            values = {"finished_at": func.now(), "active": None}
 
             result = await conn.execute(
                 tables.dialogue_pauses.update()

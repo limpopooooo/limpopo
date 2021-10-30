@@ -1,6 +1,8 @@
 import typing
 from io import StringIO
 
+from hashlib import blake2b
+
 from markdown import Markdown
 from tenacity import (
     AsyncRetrying,
@@ -51,4 +53,4 @@ async def with_retry(
 
 def calculate_functions_hash(func: typing.Callable) -> int:
     code = func.__code__
-    return hash((code.co_name, code.co_argcount))
+    return int(blake2b(f"{code.co_name}{code.co_argcount}".encode(), digest_size=6).hexdigest(), 16)

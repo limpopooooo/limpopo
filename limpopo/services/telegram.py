@@ -240,6 +240,7 @@ class TelegramService(ArchetypeService):
         try:
             logging.info("Handle start command respondent #{}".format(event.chat_id))
 
+
             respondent_id = str(event.chat_id)
 
             dialog = await self.get_or_restore_dialog(event)
