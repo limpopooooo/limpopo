@@ -17,10 +17,14 @@ classifiers = [
 [tool.poetry.dependencies]
 python = ">=3.6.1,<4.0"
 Telethon = { version = "^1.18.2", extras = ["pillow", "cryptg"] }
-starlette = "^0.14.1"
+viberbot = "^1.0.12"
 Markdown = "^3.3.3"
-uvicorn = "^0.13.0"
 tenacity = "^6.3.0"
+SQLAlchemy = { version = "^1.4.26", optional = true }
+asyncpg = { version = "^0.24.0", optional = true }
+alembic = { version = "^1.7.4", optional = true }
+psycopg2-binary = { version = "^2.9.1", optional = true }
+
 
 [tool.poetry.dev-dependencies]
 Pygments = "^2.7.2"
@@ -31,9 +35,11 @@ pre-commit = "^2.9.2"
 pre-commit-hooks = "^3.3.0"
 
 [tool.poetry.extras]
-postgres-migrations = ["psycopg2-binary", "alembic"]
-postgres-storage = ["sqlalchemy", "asyncpg"]
+postgres-storage = ["SQLAlchemy", "asyncpg", "psycopg2-binary", "asyncpg"]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.isort]
+profile = "black"
